@@ -1,0 +1,2313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProcureTrack — Part Shortage & Arrival Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --navy:      #0F2044;
+  --navy2:     #1A3260;
+  --navy3:     #243D72;
+  --teal:      #0D7D6C;
+  --teal2:     #13A891;
+  --teal-lt:   #E6F7F5;
+  --gold:      #C9900C;
+  --gold-lt:   #FFF8E6;
+  --red:       #C0392B;
+  --red-lt:    #FDECEA;
+  --orange:    #D4610A;
+  --orange-lt: #FFF0E6;
+  --green:     #1A6B38;
+  --green-lt:  #E8F5ED;
+  --purple:    #5E35B1;
+  --purple-lt: #EDE7F6;
+  --bg:        #F0F3F8;
+  --bg2:       #E7ECF4;
+  --surface:   #FFFFFF;
+  --surface2:  #F7F9FC;
+  --border:    rgba(15,32,68,0.10);
+  --border2:   rgba(15,32,68,0.18);
+  --text:      #0F2044;
+  --text2:     #2D3F66;
+  --text3:     #6B7A99;
+  --text4:     #9AA3BB;
+  --sh1: 0 1px 3px rgba(15,32,68,0.07), 0 2px 8px rgba(15,32,68,0.04);
+  --sh2: 0 4px 16px rgba(15,32,68,0.10), 0 8px 32px rgba(15,32,68,0.06);
+  --sh3: 0 8px 40px rgba(15,32,68,0.16), 0 20px 60px rgba(15,32,68,0.08);
+  --r: 8px; --rl: 12px; --rxl: 16px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased;}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(15,32,68,0.18);border-radius:10px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(15,32,68,0.32);}
+
+/* ─── SHELL ─── */
+.shell{display:flex;height:100vh;overflow:hidden;}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  width:220px;min-width:220px;
+  background:linear-gradient(180deg, var(--navy) 0%, #0A1A38 60%, #071228 100%);
+  display:flex;flex-direction:column;
+  box-shadow: 4px 0 24px rgba(15,32,68,0.30);
+  z-index:30;transition:width .2s;position:relative;
+  overflow:hidden;
+}
+.sidebar.collapsed{width:52px;min-width:52px;}
+.sidebar.collapsed .nlbl,.sidebar.collapsed .nglbl,.sidebar.collapsed .brand-text,.sidebar.collapsed .user-info{display:none;}
+.sidebar.collapsed .ni{justify-content:center;padding:9px 0;}
+.sidebar.collapsed .nav-icon{margin:0;}
+
+.sb-logo{
+  padding:18px 14px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.03);
+}
+.sb-logo-icon{
+  width:34px;height:34px;min-width:34px;
+  background:linear-gradient(135deg,var(--teal),var(--teal2));
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;box-shadow:0 3px 12px rgba(13,125,108,0.45);
+}
+.brand-text .bname{font-size:13px;font-weight:800;color:#fff;letter-spacing:-.2px;}
+.brand-text .bsub{font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-top:1px;}
+
+.sb-nav{flex:1;padding:10px 8px;overflow-y:auto;}
+.ngroup{margin-bottom:18px;}
+.nglbl{font-size:8.5px;font-weight:700;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:1.2px;padding:0 8px;margin-bottom:4px;}
+.ni{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 9px;border-radius:8px;
+  cursor:pointer;color:rgba(255,255,255,0.52);
+  font-size:12px;font-weight:400;
+  transition:all .14s;position:relative;
+  margin-bottom:1px;
+}
+.ni:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.88);}
+.ni.act{background:rgba(255,255,255,0.13);color:#fff;font-weight:600;}
+.ni.act::before{content:'';position:absolute;left:0;top:25%;bottom:25%;width:3px;background:var(--teal2);border-radius:0 3px 3px 0;}
+.nav-icon{font-size:15px;min-width:16px;text-align:center;}
+.nlbl{font-size:12px;}
+.nbadge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 2px 6px rgba(192,57,43,.4);}
+
+.sb-user{
+  padding:10px 12px;
+  border-top:1px solid rgba(255,255,255,0.07);
+  background:rgba(0,0,0,0.15);
+  display:flex;align-items:center;gap:9px;
+}
+.user-av{width:30px;height:30px;min-width:30px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;box-shadow:0 2px 8px rgba(13,125,108,.35);}
+.user-info .uname{font-size:11.5px;font-weight:600;color:#fff;}
+.user-info .urole{font-size:9.5px;color:rgba(255,255,255,.38);}
+
+/* ─── MAIN ─── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
+/* ─── TOPBAR ─── */
+.topbar{
+  background:#fff;border-bottom:1px solid var(--border);
+  height:52px;padding:0 20px;
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+  box-shadow:0 1px 6px rgba(15,32,68,0.06);
+  z-index:20;
+}
+.tb-toggle{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:4px;border-radius:6px;transition:color .13s;}
+.tb-toggle:hover{color:var(--navy);}
+.tb-title{font-size:14px;font-weight:800;color:var(--navy);letter-spacing:-.3px;}
+.tb-sub{font-size:10.5px;color:var(--text3);margin-top:1px;}
+.tb-spacer{flex:1;}
+.tb-month{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg);border:1px solid var(--border2);border-radius:20px;
+  padding:5px 12px;font-size:11px;font-weight:600;color:var(--navy);cursor:pointer;
+  transition:all .14s;
+}
+.tb-month:hover{background:var(--navy);color:#fff;}
+
+/* ─── CONTENT ─── */
+.content{flex:1;overflow-y:auto;padding:18px 22px;background:var(--bg);}
+.page{display:none;animation:fadeIn .2s ease;}
+.page.act{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
+
+/* ─── PAGE HEADER ─── */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+.ph-left{display:flex;align-items:center;gap:11px;}
+.ph-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:var(--sh1);}
+.ph-title{font-size:15px;font-weight:800;color:var(--navy);letter-spacing:-.3px;}
+.ph-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.ph-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+
+/* ─── KPI STRIP ─── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+.kpi{
+  background:#fff;border:1px solid var(--border);border-radius:var(--rl);
+  padding:13px 15px;position:relative;overflow:hidden;
+  box-shadow:var(--sh1);transition:transform .14s,box-shadow .14s;
+}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--sh2);}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 var(--rl) var(--rl);}
+.kpi.k-navy::after{background:linear-gradient(90deg,var(--navy),var(--navy2));}
+.kpi.k-teal::after{background:linear-gradient(90deg,var(--teal),var(--teal2));}
+.kpi.k-gold::after{background:linear-gradient(90deg,var(--gold),#E8A820);}
+.kpi.k-red::after{background:linear-gradient(90deg,var(--red),#E84141);}
+.kpi.k-green::after{background:linear-gradient(90deg,var(--green),#2E8B3A);}
+.kpi.k-orange::after{background:linear-gradient(90deg,var(--orange),#E87820);}
+.kpi-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:5px;}
+.kpi-val{font-size:22px;font-weight:800;color:var(--navy);letter-spacing:-.5px;line-height:1;}
+.kpi-sub{font-size:10.5px;color:var(--text3);margin-top:4px;}
+
+/* ─── CARD ─── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--rl);box-shadow:var(--sh1);margin-bottom:14px;overflow:hidden;}
+.card-head{
+  padding:12px 16px 10px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:linear-gradient(to bottom,#fff,var(--surface2));
+}
+.card-title{font-size:12.5px;font-weight:700;color:var(--navy);}
+.card-body{padding:14px 16px;}
+
+/* ─── BUTTONS ─── */
+.btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:7px 13px;border-radius:var(--r);
+  font-family:'Inter',sans-serif;font-size:11.5px;font-weight:600;
+  cursor:pointer;border:none;transition:all .14s;white-space:nowrap;
+  letter-spacing:.05px;
+}
+.btn-primary{background:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(15,32,68,.25);}
+.btn-primary:hover{background:var(--navy2);box-shadow:0 4px 14px rgba(15,32,68,.32);transform:translateY(-1px);}
+.btn-teal{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(13,125,108,.25);}
+.btn-teal:hover{background:#0a6458;box-shadow:0 4px 14px rgba(13,125,108,.32);transform:translateY(-1px);}
+.btn-gold{background:var(--gold);color:#fff;box-shadow:0 2px 8px rgba(201,144,12,.25);}
+.btn-gold:hover{background:#a87600;transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border2);}
+.btn-ghost:hover{background:var(--bg);border-color:var(--navy);color:var(--navy);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-danger:hover{background:#9b2d21;transform:translateY(-1px);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#145c2e;transform:translateY(-1px);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.btn-xs{padding:3px 8px;font-size:10.5px;}
+.btn-ic{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r);}
+
+/* ─── BADGES ─── */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.2px;}
+.b-teal{background:var(--teal-lt);color:var(--teal);}
+.b-navy{background:#E8EDF5;color:var(--navy);}
+.b-gold{background:var(--gold-lt);color:var(--gold);}
+.b-red{background:var(--red-lt);color:var(--red);}
+.b-green{background:var(--green-lt);color:var(--green);}
+.b-orange{background:var(--orange-lt);color:var(--orange);}
+.b-purple{background:var(--purple-lt);color:var(--purple);}
+.b-gray{background:#EDEDF0;color:var(--text3);border:1px solid var(--border);}
+
+/* ─── TABLE ─── */
+.tbl-wrap{overflow-x:auto;border-radius:var(--rl);border:1px solid var(--border);box-shadow:var(--sh1);}
+.tbl-wrap.scrollable{overflow-y:auto;max-height:calc(100vh - 310px);}
+table.dt{width:100%;border-collapse:collapse;font-size:11.5px;}
+table.dt thead tr{position:sticky;top:0;z-index:2;}
+table.dt th{
+  background:linear-gradient(to bottom,#EEF2FA,#E6EBF5);
+  color:var(--text2);font-weight:700;font-size:9.5px;
+  text-transform:uppercase;letter-spacing:.6px;
+  padding:9px 11px;
+  border-bottom:2px solid rgba(15,32,68,0.13);
+  white-space:nowrap;text-align:left;
+}
+table.dt td{
+  padding:9px 11px;
+  border-bottom:1px solid rgba(15,32,68,0.05);
+  vertical-align:middle;color:var(--text);white-space:nowrap;
+}
+table.dt tbody tr:hover td{background:rgba(15,32,68,0.025);}
+table.dt tbody tr:last-child td{border-bottom:none;}
+table.dt tr.row-low td{background:#FEF5F5;}
+table.dt tr.row-gold td{background:#FFFBF0;}
+table.dt tr.row-good td{background:#F2FCF5;}
+.mono{font-family:'JetBrains Mono',monospace;font-size:11px;}
+.fw7{font-weight:700;}
+.tlink{color:var(--teal);font-weight:700;cursor:pointer;border:none;background:none;font-family:'JetBrains Mono',monospace;font-size:11px;text-decoration:underline;padding:0;}
+.tlink:hover{color:var(--navy);}
+
+/* ─── INNER TABS ─── */
+.itabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--border);padding:3px;border-radius:9px;margin-bottom:14px;width:fit-content;flex-wrap:wrap;}
+.itab{padding:6px 14px;border-radius:7px;cursor:pointer;font-size:11.5px;font-weight:500;color:var(--text3);transition:all .14s;}
+.itab:hover{color:var(--text);background:rgba(255,255,255,.6);}
+.itab.act{background:#fff;color:var(--navy);font-weight:700;box-shadow:0 1px 5px rgba(15,32,68,.12);}
+.itab-content{display:none;} .itab-content.act{display:block;animation:fadeIn .18s ease;}
+
+/* ─── FORMS ─── */
+.fg{display:flex;flex-direction:column;gap:3px;}
+.fl{font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+.req{color:var(--red);}
+input,select,textarea{
+  font-family:'Inter',sans-serif;font-size:12.5px;
+  padding:7px 10px;border:1.5px solid var(--border2);
+  border-radius:var(--r);background:#fff;color:var(--text);
+  outline:none;transition:border-color .14s,box-shadow .14s;width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(15,32,68,.09);}
+textarea{resize:vertical;min-height:65px;}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px;}
+.fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.fgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;}
+.sep{height:1px;background:var(--border);margin:14px 0;}
+.section-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:9px;}
+
+/* ─── MODAL ─── */
+.overlay{position:fixed;inset:0;background:rgba(10,15,30,0.55);backdrop-filter:blur(3px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;}
+.overlay.hide{display:none;}
+.modal{background:#fff;border-radius:var(--rxl);box-shadow:var(--sh3);width:100%;max-width:680px;max-height:90vh;overflow-y:auto;animation:modalIn .2s ease;}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(8px);}to{opacity:1;transform:none;}}
+.modal-head{padding:15px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;background:linear-gradient(to bottom,#fff,var(--surface2));border-radius:var(--rxl) var(--rxl) 0 0;}
+.modal-title{font-size:14px;font-weight:800;color:var(--navy);flex:1;letter-spacing:-.2px;}
+.modal-body{padding:18px 20px;}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surface2);border-radius:0 0 var(--rxl) var(--rxl);}
+
+/* ─── PROGRESS ─── */
+.prog{height:5px;background:rgba(15,32,68,0.08);border-radius:10px;overflow:hidden;min-width:60px;}
+.prog-fill{height:100%;border-radius:10px;transition:width .4s ease;}
+.pf-teal{background:linear-gradient(90deg,var(--teal),var(--teal2));}
+.pf-gold{background:linear-gradient(90deg,var(--gold),#E8A820);}
+.pf-red{background:linear-gradient(90deg,var(--red),#E84141);}
+.pf-navy{background:linear-gradient(90deg,var(--navy),var(--navy2));}
+.pf-green{background:linear-gradient(90deg,var(--green),#2E8B3A);}
+
+/* ─── TOOLBAR ─── */
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.search-wrap{position:relative;}
+.search-wrap input{padding-left:30px;width:210px;}
+.search-wrap::before{content:'🔍';position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;z-index:1;}
+
+/* ─── UPLOAD ZONE ─── */
+.upzone{
+  border:2px dashed rgba(15,32,68,0.20);border-radius:var(--rl);
+  padding:26px;text-align:center;cursor:pointer;
+  transition:all .18s;background:var(--surface2);
+}
+.upzone:hover{border-color:var(--teal);background:var(--teal-lt);transform:scale(1.01);}
+.upzone input{display:none;}
+
+/* ─── PCT COLORS ─── */
+.pct-hi{color:var(--teal);font-weight:700;}
+.pct-mid{color:var(--gold);font-weight:700;}
+.pct-low{color:var(--orange);font-weight:700;}
+.pct-crit{color:var(--red);font-weight:700;}
+
+/* ─── TRACKER MONTH HEADERS ─── */
+.mh0{background:linear-gradient(90deg,#0F2044,#1A3260)!important;color:#fff!important;}
+.mh1{background:linear-gradient(90deg,#0D4E7E,#0B6090)!important;color:#fff!important;}
+.mh2{background:linear-gradient(90deg,#0D7D6C,#13A891)!important;color:#fff!important;}
+.mh3{background:linear-gradient(90deg,#2E5B1A,#3E7B2A)!important;color:#fff!important;}
+.mh4{background:linear-gradient(90deg,#7A5A0A,#9A7A1A)!important;color:#fff!important;}
+.mh5{background:linear-gradient(90deg,#7A2A0A,#9A3A1A)!important;color:#fff!important;}
+
+/* ─── TODO / STICKY ─── */
+.todo-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.todo-card{
+  background:#fff;border:1px solid var(--border);border-radius:10px;
+  padding:13px 14px;position:relative;
+  box-shadow:var(--sh1);transition:transform .14s,box-shadow .14s;
+  border-left:3px solid var(--border2);
+}
+.todo-card:hover{transform:translateY(-2px);box-shadow:var(--sh2);}
+.todo-card.pri-urgent{border-left-color:var(--red);}
+.todo-card.pri-normal{border-left-color:var(--gold);}
+.todo-card.pri-info{border-left-color:var(--teal);}
+.todo-card.done-card{opacity:.55;}
+.todo-card.done-card .todo-text{text-decoration:line-through;color:var(--text3);}
+.todo-text{font-size:12.5px;line-height:1.55;color:var(--text);margin-bottom:8px;word-break:break-word;}
+.todo-meta{font-size:10px;color:var(--text3);display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.todo-actions{display:flex;gap:5px;margin-top:9px;padding-top:9px;border-top:1px solid var(--border);}
+.todo-btn{padding:4px 10px;border-radius:14px;border:1px solid var(--border2);background:#fff;font-size:10.5px;cursor:pointer;font-family:'Inter',sans-serif;color:var(--text2);transition:all .13s;}
+.todo-btn:hover,.todo-btn.act{background:var(--navy);color:#fff;border-color:var(--navy);}
+.todo-detail-box{margin-top:9px;padding:9px 11px;background:var(--bg);border-radius:var(--r);font-size:11.5px;color:var(--text2);line-height:1.6;border:1px solid var(--border);}
+
+/* ─── INFO BOXES ─── */
+.info-box{background:linear-gradient(to right,var(--surface2),#eef3ff);border:1px solid var(--border2);border-left:3px solid var(--navy);border-radius:var(--r);padding:10px 13px;font-size:11.5px;color:var(--text2);margin-bottom:12px;line-height:1.6;}
+.info-warn{background:var(--red-lt);border:1px solid rgba(192,57,43,.2);border-left:3px solid var(--red);border-radius:var(--r);padding:10px 13px;font-size:11.5px;color:var(--red);margin-bottom:12px;}
+.info-gold{background:var(--gold-lt);border:1px solid rgba(201,144,12,.2);border-left:3px solid var(--gold);border-radius:var(--r);padding:10px 13px;font-size:11.5px;color:#7a5000;margin-bottom:12px;}
+
+/* ─── ALERT NOTIF BAR ─── */
+#notif-bar{
+  background:linear-gradient(90deg,#7B1212 0%,#A02010 60%,#C0390A 100%);
+  color:#fff;padding:8px 20px;display:flex;align-items:center;gap:10px;flex-shrink:0;font-size:11px;
+  box-shadow:0 2px 8px rgba(150,20,10,.3);
+}
+#notif-bar.hide{display:none;}
+.nchips{flex:1;display:flex;flex-wrap:wrap;gap:7px;}
+.nchip{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,.2);padding:3px 10px;border-radius:20px;font-size:10.5px;cursor:pointer;transition:.13s;}
+.nchip:hover{background:rgba(255,255,255,0.25);}
+
+/* ─── ARCHIVE CHIP ─── */
+.arc-month-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#fff;border:1px solid var(--border2);
+  border-radius:20px;padding:5px 12px;
+  font-size:11px;font-weight:600;color:var(--navy);
+  cursor:pointer;margin:4px;transition:all .14s;
+}
+.arc-month-chip:hover,.arc-month-chip.act{background:var(--navy);color:#fff;}
+
+/* misc */
+.ml-auto{margin-left:auto;}
+.gap8{gap:8px;}
+.mb12{margin-bottom:12px;}
+.mb16{margin-bottom:16px;}
+.mt12{margin-top:12px;}
+.text-right{text-align:right;}
+.text-center{text-align:center;}
+.d-flex{display:flex;}
+.align-center{align-items:center;}
+.flex-wrap{flex-wrap:wrap;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">📦</div>
+    <div class="brand-text">
+      <div class="bname">ProcureTrack</div>
+      <div class="bsub">Parts Tracker</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="ngroup">
+      <div class="nglbl">Overview</div>
+      <div class="ni act" onclick="navTo('dashboard',this)"><span class="nav-icon">📊</span><span class="nlbl">Dashboard</span></div>
+      <div class="ni" onclick="navTo('tracker',this)"><span class="nav-icon">📋</span><span class="nlbl">Parts Tracker</span></div>
+    </div>
+    <div class="ngroup">
+      <div class="nglbl">Transit & GRN</div>
+      <div class="ni" onclick="navTo('transit',this)"><span class="nav-icon">🚚</span><span class="nlbl">Arrival / Transit</span></div>
+      <div class="ni" onclick="navTo('grn',this)"><span class="nav-icon">📥</span><span class="nlbl">GRN Pending</span><span class="nbadge" id="grn-badge">0</span></div>
+      <div class="ni" onclick="navTo('grn-done',this)"><span class="nav-icon">✅</span><span class="nlbl">GRN Done</span></div>
+    </div>
+    <div class="ngroup">
+      <div class="nglbl">Data</div>
+      <div class="ni" onclick="navTo('data-update',this)"><span class="nav-icon">📤</span><span class="nlbl">Data Update</span></div>
+      <div class="ni" onclick="navTo('master',this)"><span class="nav-icon">🗂️</span><span class="nlbl">Master Data</span></div>
+      <div class="ni" onclick="navTo('remark',this)"><span class="nav-icon">💬</span><span class="nlbl">Remarks / RM</span></div>
+    </div>
+    <div class="ngroup">
+      <div class="nglbl">Tools</div>
+      <div class="ni" onclick="navTo('todo',this)"><span class="nav-icon">📌</span><span class="nlbl">To-Do / Notes</span></div>
+      <div class="ni" onclick="navTo('archive',this)"><span class="nav-icon">🗄️</span><span class="nlbl">Archive</span></div>
+    </div>
+  </nav>
+  <div class="sb-user">
+    <div class="user-av" id="user-av">U</div>
+    <div class="user-info">
+      <div class="uname" id="user-name">User</div>
+      <div class="urole" id="user-role">Buyer</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+
+  <!-- NOTIF BAR -->
+  <div id="notif-bar" class="hide">
+    <span style="font-weight:800;white-space:nowrap">⚡ ACTION:</span>
+    <div class="nchips" id="notif-chips"></div>
+    <button class="btn btn-ghost btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:none" onclick="document.getElementById('notif-bar').classList.add('hide')">✕</button>
+  </div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="tb-toggle" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">☰</button>
+    <div>
+      <div class="tb-title" id="tb-title">Dashboard</div>
+      <div class="tb-sub" id="tb-sub">Supply Chain Overview</div>
+    </div>
+    <div class="tb-spacer"></div>
+    <select id="active-month-sel" onchange="onMonthChange()" style="width:130px;font-size:11.5px;font-weight:600;border-radius:20px;padding:5px 10px;">
+      <option value="0">Jan 2026</option><option value="1">Feb 2026</option>
+      <option value="2">Mar 2026</option><option value="3">Apr 2026</option>
+      <option value="4">May 2026</option><option value="5" selected>Jun 2026</option>
+      <option value="6">Jul 2026</option><option value="7">Aug 2026</option>
+      <option value="8">Sep 2026</option><option value="9">Oct 2026</option>
+      <option value="10">Nov 2026</option><option value="11">Dec 2026</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="exportAll()">⬇ Export</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('m-add-article')">+ Add Article</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content" id="content">
+
+    <!-- ══════════ DASHBOARD ══════════ -->
+    <div class="page act" id="pg-dashboard">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,var(--navy),var(--navy2))">📊</div>
+          <div><div class="ph-title">Dashboard</div><div class="ph-sub">Supply chain overview for <span id="dash-month-lbl">Jun 2026</span></div></div>
+        </div>
+      </div>
+      <div class="kpi-row" id="dash-kpis"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><span class="card-title">📦 Stock Coverage — Current Month</span></div>
+          <div class="card-body" id="dash-stock-chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">🚚 Transit & GRN Summary</span></div>
+          <div class="card-body" id="dash-transit-sum"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">⚠️ Low Stock Articles — Immediate Action Required</span>
+          <span class="badge b-red ml-auto" id="low-stock-badge">0</span>
+        </div>
+        <div class="tbl-wrap">
+          <table class="dt"><thead><tr><th>Code</th><th>Description</th><th>Supplier</th><th>Opening</th><th>Open%</th><th>Plan</th><th>In Transit</th><th>GRN</th><th>Status</th></tr></thead>
+          <tbody id="dash-low-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ PARTS TRACKER ══════════ -->
+    <div class="page" id="pg-tracker">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,var(--teal),var(--teal2))">📋</div>
+          <div><div class="ph-title">Parts Tracker</div><div class="ph-sub">Rolling 6-month view — Opening, Arr.Plan, Sale Plan, Transit, GRN</div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-ghost btn-sm" onclick="toggleHL()">🎨 Highlight</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportTrackerXL()">⬇ Excel</button>
+        </div>
+      </div>
+
+      <!-- Highlight bar -->
+      <div id="hl-bar" style="display:none;margin-bottom:11px;padding:8px 12px;background:#fff;border:1px solid var(--border);border-radius:var(--rl);display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:11px;font-weight:600;color:var(--text3)">Highlight:</span>
+        <button class="btn btn-ghost btn-xs" id="hl-low" onclick="hlSet('low',this)">🔴 Low (&lt;40%)</button>
+        <button class="btn btn-ghost btn-xs" id="hl-mid" onclick="hlSet('mid',this)">🟡 Mid (40–70%)</button>
+        <button class="btn btn-ghost btn-xs" id="hl-good" onclick="hlSet('good',this)">🟢 Good (≥70%)</button>
+        <button class="btn btn-ghost btn-xs" onclick="hlClear()">✕ Clear</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap"><input type="text" id="tr-search" placeholder="Search article, supplier..." oninput="renderTracker()"></div>
+        <select id="tr-sup-filter" onchange="renderTracker()" style="width:150px"><option value="">All Suppliers</option></select>
+        <div class="ml-auto d-flex gap8">
+          <button class="btn btn-teal btn-sm" onclick="document.getElementById('f-tracker-up').click()">⬆ Upload Excel</button>
+          <input type="file" id="f-tracker-up" accept=".xlsx,.xls,.csv" style="display:none" onchange="importTrackerExcel(this)">
+          <button class="btn btn-ghost btn-sm" onclick="dlTemplate('tracker')">⬇ Template</button>
+        </div>
+      </div>
+
+      <div class="tbl-wrap scrollable">
+        <table class="dt" id="tbl-tracker">
+          <thead id="tracker-head"></thead>
+          <tbody id="tracker-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3)">
+        <strong id="tr-row-count">0</strong> articles &nbsp;|&nbsp;
+        <span class="pct-hi">Open%</span> = Opening ÷ Sale Plan &nbsp;|&nbsp;
+        Closing = Opening + Arr.Plan − Sale Plan (rolls forward each month)
+      </div>
+    </div>
+
+    <!-- ══════════ ARRIVAL / TRANSIT ══════════ -->
+    <div class="page" id="pg-transit">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,var(--gold),#E8A820)">🚚</div>
+          <div><div class="ph-title">Arrival Plan / Transit</div><div class="ph-sub">Track dispatches — update status → GRN flow</div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-primary btn-sm" onclick="openModal('m-add-transit')">+ Add Shipment</button>
+          <button class="btn btn-ghost btn-sm" onclick="dlTemplate('transit')">⬇ Template</button>
+          <button class="btn btn-teal btn-sm" onclick="document.getElementById('f-transit-up').click()">⬆ Upload</button>
+          <input type="file" id="f-transit-up" accept=".xlsx,.xls,.csv" style="display:none" onchange="importTransitExcel(this)">
+        </div>
+      </div>
+
+      <div class="itabs" id="transit-itabs">
+        <div class="itab act" onclick="showItab('tr-all',this,'transit-itabs')">All Shipments</div>
+        <div class="itab" onclick="showItab('tr-transit',this,'transit-itabs')">🚛 In Transit</div>
+        <div class="itab" onclick="showItab('tr-dc',this,'transit-itabs')">🏭 At DC / Warehouse</div>
+        <div class="itab" onclick="showItab('tr-done',this,'transit-itabs')">✅ GRN Done</div>
+      </div>
+
+      <div class="itab-content act" id="itp-tr-all">
+        <div class="tbl-wrap scrollable">
+          <table class="dt"><thead><tr>
+            <th>Article Code</th><th>Description</th><th>Invoice No.</th><th>Supplier</th>
+            <th>Dispatch Date</th><th>Qty</th><th>ETA</th><th>LR / Vehicle</th>
+            <th>Status</th><th>GRN Qty</th><th>Change Status</th><th>Del</th>
+          </tr></thead><tbody id="transit-all-body"></tbody></table>
+        </div>
+      </div>
+      <div class="itab-content" id="itp-tr-transit">
+        <div class="tbl-wrap scrollable"><table class="dt"><thead><tr>
+          <th>Article Code</th><th>Description</th><th>Invoice No.</th><th>Supplier</th><th>Qty</th><th>ETA</th><th>Days Left</th><th>LR No.</th><th>Status</th><th>Update</th>
+        </tr></thead><tbody id="transit-intransit-body"></tbody></table></div>
+      </div>
+      <div class="itab-content" id="itp-tr-dc">
+        <div class="info-box">Items <strong>Received at DC</strong> or <strong>Received at Nearest Warehouse</strong> appear here. DC items move to GRN Pending. Warehouse items still show as Transit in main tracker.</div>
+        <div class="tbl-wrap scrollable"><table class="dt"><thead><tr>
+          <th>Article Code</th><th>Description</th><th>Invoice No.</th><th>Qty</th><th>Received Date</th><th>Location</th><th>GRN Status</th><th>Action</th>
+        </tr></thead><tbody id="transit-dc-body"></tbody></table></div>
+      </div>
+      <div class="itab-content" id="itp-tr-done">
+        <div class="tbl-wrap scrollable"><table class="dt"><thead><tr>
+          <th>Article Code</th><th>Description</th><th>Invoice No.</th><th>Order Qty</th><th>GRN Qty</th><th>Variance</th><th>GRN Date</th>
+        </tr></thead><tbody id="transit-grndone-body"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ══════════ GRN PENDING ══════════ -->
+    <div class="page" id="pg-grn">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,var(--orange),#E87820)">⏳</div>
+          <div><div class="ph-title">GRN Pending</div><div class="ph-sub">Received at DC — awaiting GRN confirmation</div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-teal btn-sm" onclick="openModal('m-grn-upload')">⬆ Upload GRN Sheet</button>
+          <button class="btn btn-ghost btn-sm" onclick="dlTemplate('grn')">⬇ GRN Template</button>
+        </div>
+      </div>
+
+      <div class="info-gold">📌 Auto-match: Upload monthly GRN sheet → system matches Invoice No. + checks actual GRN Qty → auto-marks done. You can also mark manually.</div>
+
+      <div class="tbl-wrap scrollable">
+        <table class="dt"><thead><tr>
+          <th>Article Code</th><th>Description</th><th>Invoice No.</th><th>Supplier</th>
+          <th>Order Qty</th><th>Expected GRN Qty</th><th>Received At</th><th>Aging</th>
+          <th>Manual GRN Qty</th><th>Mark Done</th>
+        </tr></thead><tbody id="grn-pending-body"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════ GRN DONE ══════════ -->
+    <div class="page" id="pg-grn-done">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,var(--green),#2E8B3A)">✅</div>
+          <div><div class="ph-title">GRN Done</div><div class="ph-sub">Completed receipts — <span id="grn-done-month-lbl">Jun 2026</span></div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-ghost btn-sm" onclick="exportGRNXL()">⬇ Export Excel</button>
+        </div>
+      </div>
+
+      <div class="kpi-row" id="grn-done-kpis"></div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">✅ GRN Completed</span><span class="ml-auto" style="font-size:11px;color:var(--text3)" id="grn-done-count"></span></div>
+        <div class="tbl-wrap" style="border:none">
+          <table class="dt"><thead><tr>
+            <th>Article Code</th><th>Description</th><th>Invoice No.</th><th>Supplier</th>
+            <th>Order Qty</th><th>GRN Qty</th><th>Variance</th><th>GRN Date</th>
+          </tr></thead><tbody id="grn-done-body"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">🚛 Still In Transit (same month)</span></div>
+        <div class="tbl-wrap" style="border:none">
+          <table class="dt"><thead><tr>
+            <th>Article Code</th><th>Description</th><th>Invoice No.</th><th>Qty</th><th>Status</th><th>ETA</th>
+          </tr></thead><tbody id="grn-done-transit-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ DATA UPDATE ══════════ -->
+    <div class="page" id="pg-data-update">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,#5E35B1,#7B52D0)">📤</div>
+          <div><div class="ph-title">Data Update</div><div class="ph-sub">Upload or manually enter article data, arrival plan, opening stock</div></div>
+        </div>
+      </div>
+
+      <div class="itabs" id="du-itabs">
+        <div class="itab act" onclick="showItab('du-articles',this,'du-itabs')">📦 Articles</div>
+        <div class="itab" onclick="showItab('du-arrival',this,'du-itabs')">📅 Arrival Plan</div>
+        <div class="itab" onclick="showItab('du-opening',this,'du-itabs')">📊 Opening Stock</div>
+      </div>
+
+      <!-- Articles sub-tab -->
+      <div class="itab-content act" id="itp-du-articles">
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-head"><span class="card-title">⬆ Upload Articles Excel</span></div>
+            <div class="card-body">
+              <div class="upzone" onclick="document.getElementById('f-art-up').click()">
+                <input type="file" id="f-art-up" accept=".xlsx,.xls,.csv" onchange="importArticlesExcel(this)">
+                <div style="font-size:30px;margin-bottom:8px">📊</div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--text2)">Click to upload Articles Excel</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">Article Code | Description | Supplier | Price | Opening Stock | Arr.Plan (monthly) | Sale Plan (monthly)</div>
+              </div>
+              <button class="btn btn-ghost btn-sm mt12" style="width:100%" onclick="dlTemplate('articles')">⬇ Download Template</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">✏️ Manual Article Entry</span></div>
+            <div class="card-body">
+              <div class="fgrid2">
+                <div class="fg"><label class="fl">Article Code <span class="req">*</span></label><input id="mu-code" placeholder="ART-XXXX" style="text-transform:uppercase"></div>
+                <div class="fg"><label class="fl">Description <span class="req">*</span></label><input id="mu-desc" placeholder="Description"></div>
+                <div class="fg"><label class="fl">Supplier</label>
+                  <select id="mu-sup"><option value="">-- Select --</option></select>
+                </div>
+                <div class="fg"><label class="fl">Current Price (₹)</label><input type="number" id="mu-price" placeholder="0.00"></div>
+                <div class="fg"><label class="fl">Opening Stock (Current Month)</label><input type="number" id="mu-open" placeholder="0"></div>
+              </div>
+              <button class="btn btn-primary mt12" onclick="saveManualArticle()" style="width:100%">+ Save Article</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">📋 Article List</span>
+            <div class="ml-auto d-flex gap8">
+              <button class="btn btn-ghost btn-sm" onclick="exportArticlesXL()">⬇ Export</button>
+            </div>
+          </div>
+          <div class="tbl-wrap" style="border:none">
+            <table class="dt"><thead><tr>
+              <th>Code</th><th>Description</th><th>Supplier</th><th>Price</th><th>Opening Stock</th><th>Lead Time</th><th>Edit</th><th>Del</th>
+            </tr></thead><tbody id="du-art-body"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrival Plan sub-tab -->
+      <div class="itab-content" id="itp-du-arrival">
+        <div class="grid2 mb16">
+          <div class="card">
+            <div class="card-head"><span class="card-title">⬆ Upload Arrival Plan</span></div>
+            <div class="card-body">
+              <div class="upzone" onclick="document.getElementById('f-arr-up').click()">
+                <input type="file" id="f-arr-up" accept=".xlsx,.xls,.csv" onchange="importArrivalExcel(this)">
+                <div style="font-size:30px;margin-bottom:8px">📅</div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--text2)">Click to upload Arrival Plan Excel</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">Article Code | Month | Arrival Plan Qty | Sale Plan Qty</div>
+              </div>
+              <button class="btn btn-ghost btn-sm mt12" style="width:100%" onclick="dlTemplate('arrival')">⬇ Download Template</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">✏️ Manual Arrival Plan</span></div>
+            <div class="card-body">
+              <div class="fgrid2">
+                <div class="fg"><label class="fl">Article Code <span class="req">*</span></label>
+                  <select id="ap-art"><option value="">-- Select --</option></select></div>
+                <div class="fg"><label class="fl">Month <span class="req">*</span></label>
+                  <select id="ap-mon" style="width:100%">
+                    <option value="0">Jan 2026</option><option value="1">Feb 2026</option>
+                    <option value="2">Mar 2026</option><option value="3">Apr 2026</option>
+                    <option value="4">May 2026</option><option value="5" selected>Jun 2026</option>
+                    <option value="6">Jul 2026</option><option value="7">Aug 2026</option>
+                    <option value="8">Sep 2026</option><option value="9">Oct 2026</option>
+                    <option value="10">Nov 2026</option><option value="11">Dec 2026</option>
+                  </select>
+                </div>
+                <div class="fg"><label class="fl">Arrival Plan Qty</label><input type="number" id="ap-qty" placeholder="0"></div>
+                <div class="fg"><label class="fl">Sale Plan Qty</label><input type="number" id="ap-sale" placeholder="0"></div>
+              </div>
+              <button class="btn btn-primary mt12" onclick="saveArrivalPlan()" style="width:100%">+ Save Plan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Opening Stock sub-tab -->
+      <div class="itab-content" id="itp-du-opening">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-head"><span class="card-title">⬆ Upload Opening Stock</span></div>
+            <div class="card-body">
+              <div class="upzone" onclick="document.getElementById('f-open-up').click()">
+                <input type="file" id="f-open-up" accept=".xlsx,.xls,.csv" onchange="importOpeningExcel(this)">
+                <div style="font-size:30px;margin-bottom:8px">📦</div>
+                <div style="font-size:12.5px;font-weight:700;color:var(--text2)">Click to upload Opening Stock</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">Article Code | Month | Opening Stock Qty</div>
+              </div>
+              <button class="btn btn-ghost btn-sm mt12" style="width:100%" onclick="dlTemplate('opening')">⬇ Download Template</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">✏️ Manual Opening Stock</span></div>
+            <div class="card-body">
+              <div class="fgrid2">
+                <div class="fg"><label class="fl">Article Code <span class="req">*</span></label>
+                  <select id="os-art"><option value="">-- Select --</option></select></div>
+                <div class="fg"><label class="fl">Month <span class="req">*</span></label>
+                  <select id="os-mon" style="width:100%">
+                    <option value="0">Jan 2026</option><option value="1">Feb 2026</option>
+                    <option value="2">Mar 2026</option><option value="3">Apr 2026</option>
+                    <option value="4">May 2026</option><option value="5" selected>Jun 2026</option>
+                    <option value="6">Jul 2026</option><option value="7">Aug 2026</option>
+                    <option value="8">Sep 2026</option><option value="9">Oct 2026</option>
+                    <option value="10">Nov 2026</option><option value="11">Dec 2026</option>
+                  </select>
+                </div>
+                <div class="fg" style="grid-column:span 2"><label class="fl">Opening Stock Qty</label><input type="number" id="os-qty" placeholder="0"></div>
+              </div>
+              <button class="btn btn-primary mt12" onclick="saveOpeningStock()" style="width:100%">+ Update Opening Stock</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ MASTER DATA ══════════ -->
+    <div class="page" id="pg-master">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,#0D4E7E,#0B6090)">🗂️</div>
+          <div><div class="ph-title">Master Data</div><div class="ph-sub">Article codes, suppliers, unit prices, lead times — auto-fetched everywhere</div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-primary btn-sm" onclick="openModal('m-add-master')">+ Add Entry</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportMasterXL()">⬇ Export</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap"><input type="text" id="master-search" placeholder="Search article, supplier..." oninput="renderMaster()"></div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="dt"><thead><tr>
+          <th>Article Code</th><th>Description</th><th>Supplier</th><th>Unit Price (₹)</th>
+          <th>Lead Time (Days)</th><th>MOQ</th><th>Category</th><th>Edit</th><th>Del</th>
+        </tr></thead><tbody id="master-body"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════ REMARKS / RM STATUS ══════════ -->
+    <div class="page" id="pg-remark">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,var(--red),#E84141)">💬</div>
+          <div><div class="ph-title">Remarks & RM Status</div><div class="ph-sub">RM status, production remarks per article</div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-ghost btn-sm" onclick="exportRemarksXL()">⬇ Export</button>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="dt"><thead><tr>
+          <th>Article Code</th><th>Description</th><th>Supplier</th>
+          <th>RM Status</th><th>Production Remark</th><th>Last Updated</th><th>Save</th>
+        </tr></thead><tbody id="remark-body"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════ TO-DO / NOTES ══════════ -->
+    <div class="page" id="pg-todo">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,var(--gold),#E8A820)">📌</div>
+          <div><div class="ph-title">To-Do / Notes</div><div class="ph-sub">Sticky notes — tasks, vendor follow-ups, MOM notes</div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-primary btn-sm" onclick="openModal('m-add-todo')">+ Add Note</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleDoneNotes()">👁 Show/Hide Done</button>
+        </div>
+      </div>
+
+      <!-- Quick add bar -->
+      <div class="card mb16">
+        <div class="card-body" style="padding:12px 14px">
+          <div class="d-flex gap8 flex-wrap align-center">
+            <input type="text" id="quick-todo" placeholder="Quick add task... (press Enter)" style="flex:1;min-width:240px" onkeydown="if(event.key==='Enter')quickAddTodo()">
+            <select id="quick-pri" style="width:110px">
+              <option value="urgent">🔴 Urgent</option>
+              <option value="normal" selected>🟡 Normal</option>
+              <option value="info">🔵 Info</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="quickAddTodo()">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="todo-section-pending">
+        <div class="section-lbl">📋 Pending Tasks (<span id="pending-count">0</span>)</div>
+        <div class="todo-board" id="todo-board-pending"></div>
+      </div>
+
+      <div id="todo-section-done" style="display:none">
+        <div class="sep"></div>
+        <div class="section-lbl">✅ Completed Tasks (<span id="done-count">0</span>)</div>
+        <div class="todo-board" id="todo-board-done"></div>
+      </div>
+    </div>
+
+    <!-- ══════════ ARCHIVE ══════════ -->
+    <div class="page" id="pg-archive">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-icon" style="background:linear-gradient(135deg,#444,#666)">🗄️</div>
+          <div><div class="ph-title">Archive</div><div class="ph-sub">Closed months — view & download historical data</div></div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-gold btn-sm" onclick="openModal('m-close-month')">📦 Close Month & Archive</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportArchiveXL()">⬇ Export All</button>
+        </div>
+      </div>
+
+      <div class="card mb16">
+        <div class="card-head"><span class="card-title">📅 Archived Months</span></div>
+        <div class="card-body">
+          <div id="arc-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px"></div>
+          <div id="arc-empty" style="color:var(--text3);font-size:12px">No archived months yet. Close a month using the button above.</div>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="dt"><thead><tr>
+          <th>Code</th><th>Description</th><th>Supplier</th><th>Month</th>
+          <th>Opening</th><th>Arr.Plan</th><th>Sale Plan</th><th>GRN</th><th>Closing</th>
+        </tr></thead><tbody id="archive-body"></tbody></table>
+      </div>
+    </div>
+
+  </div><!-- end .content -->
+</div><!-- end .main -->
+</div><!-- end .shell -->
+
+<!-- ═══════════════ MODALS ═══════════════ -->
+
+<!-- Add Article -->
+<div class="overlay hide" id="m-add-article">
+  <div class="modal">
+    <div class="modal-head"><span>📦</span><span class="modal-title">Add New Article</span><button class="btn btn-ghost btn-xs ml-auto" onclick="closeModal('m-add-article')">✕</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label class="fl">Article Code <span class="req">*</span></label><input id="na-code" placeholder="ART-XXXX" style="text-transform:uppercase"></div>
+        <div class="fg"><label class="fl">Description <span class="req">*</span></label><input id="na-desc" placeholder="e.g. Cotton Fabric 44 inch"></div>
+        <div class="fg"><label class="fl">Supplier</label><select id="na-sup"><option value="">-- Select --</option></select></div>
+        <div class="fg"><label class="fl">Current Price (₹)</label><input type="number" id="na-price" placeholder="0.00"></div>
+        <div class="fg"><label class="fl">Opening Stock</label><input type="number" id="na-open" placeholder="0"></div>
+        <div class="fg"><label class="fl">Lead Time (Days)</label><input type="number" id="na-lt" placeholder="0"></div>
+      </div>
+      <div class="sep"></div>
+      <div class="section-lbl">Initial Month Data (Current Month)</div>
+      <div class="fgrid">
+        <div class="fg"><label class="fl">Arrival Plan Qty</label><input type="number" id="na-arr" placeholder="0"></div>
+        <div class="fg"><label class="fl">Sale Plan Qty</label><input type="number" id="na-plan" placeholder="0"></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-add-article')">Cancel</button><button class="btn btn-primary" onclick="addArticle()">Add Article</button></div>
+  </div>
+</div>
+
+<!-- Add Transit -->
+<div class="overlay hide" id="m-add-transit">
+  <div class="modal">
+    <div class="modal-head"><span>🚚</span><span class="modal-title">Add Transit / Shipment</span><button class="btn btn-ghost btn-xs ml-auto" onclick="closeModal('m-add-transit')">✕</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label class="fl">Article Code <span class="req">*</span></label><select id="tr-art"><option value="">-- Select --</option></select></div>
+        <div class="fg"><label class="fl">Invoice No. <span class="req">*</span></label><input id="tr-inv" placeholder="INV-XXXX"></div>
+        <div class="fg"><label class="fl">Dispatch Date <span class="req">*</span></label><input type="date" id="tr-date"></div>
+        <div class="fg"><label class="fl">Transit Qty <span class="req">*</span></label><input type="number" id="tr-qty" placeholder="0"></div>
+        <div class="fg"><label class="fl">ETA</label><input type="date" id="tr-eta"></div>
+        <div class="fg"><label class="fl">LR / Vehicle No.</label><input id="tr-lr" placeholder="LR12345"></div>
+        <div class="fg"><label class="fl">Transporter</label><input id="tr-trans" placeholder="DTDC, Blue Dart..."></div>
+        <div class="fg"><label class="fl">Initial Status</label>
+          <select id="tr-status">
+            <option value="In Transit">🚛 In Transit</option>
+            <option value="Received at Nearest Warehouse">🏪 Received at Nearest Warehouse</option>
+            <option value="Received at DC">🏭 Received at DC</option>
+            <option value="GRN Done">✅ GRN Done</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-add-transit')">Cancel</button><button class="btn btn-primary" onclick="addTransit()">Add Shipment</button></div>
+  </div>
+</div>
+
+<!-- GRN Upload -->
+<div class="overlay hide" id="m-grn-upload">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head"><span>📥</span><span class="modal-title">Upload GRN Sheet — Auto Match</span><button class="btn btn-ghost btn-xs ml-auto" onclick="closeModal('m-grn-upload')">✕</button></div>
+    <div class="modal-body">
+      <div class="info-gold">System matches Invoice No. from upload with pending GRN. Actual GRN Qty used (may differ from order qty). Matched items auto-marked GRN Done.</div>
+      <div class="upzone mt12" onclick="document.getElementById('f-grn-match').click()">
+        <input type="file" id="f-grn-match" accept=".xlsx,.xls,.csv" onchange="autoMatchGRN(this)">
+        <div style="font-size:28px;margin-bottom:7px">📋</div>
+        <div style="font-size:12.5px;font-weight:700;color:var(--text2)">Upload Monthly GRN Excel</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Format: Invoice No | GRN Qty | GRN Date</div>
+      </div>
+      <button class="btn btn-ghost btn-sm mt12" style="width:100%" onclick="dlTemplate('grn')">⬇ Download GRN Template</button>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-grn-upload')">Close</button></div>
+  </div>
+</div>
+
+<!-- Add Master -->
+<div class="overlay hide" id="m-add-master">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head"><span>🗂️</span><span class="modal-title" id="master-modal-title">Add Master Entry</span><button class="btn btn-ghost btn-xs ml-auto" onclick="closeModal('m-add-master')">✕</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg"><label class="fl">Article Code <span class="req">*</span></label><input id="ms-code" placeholder="ART-XXXX" style="text-transform:uppercase"></div>
+        <div class="fg"><label class="fl">Description <span class="req">*</span></label><input id="ms-desc" placeholder="Description"></div>
+        <div class="fg"><label class="fl">Supplier Name <span class="req">*</span></label><input id="ms-sup" placeholder="Supplier name"></div>
+        <div class="fg"><label class="fl">Unit Price (₹)</label><input type="number" id="ms-price" placeholder="0.00"></div>
+        <div class="fg"><label class="fl">Lead Time (Days)</label><input type="number" id="ms-lt" placeholder="0"></div>
+        <div class="fg"><label class="fl">MOQ</label><input type="number" id="ms-moq" placeholder="0"></div>
+        <div class="fg"><label class="fl">Category</label><input id="ms-cat" placeholder="Fabric, Trims, Zipper..."></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-add-master')">Cancel</button><button class="btn btn-primary" onclick="saveMaster()">Save</button></div>
+  </div>
+</div>
+
+<!-- Add Todo -->
+<div class="overlay hide" id="m-add-todo">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-head"><span>📌</span><span class="modal-title">Add Note / Task</span><button class="btn btn-ghost btn-xs ml-auto" onclick="closeModal('m-add-todo')">✕</button></div>
+    <div class="modal-body">
+      <div class="fgrid">
+        <div class="fg" style="grid-column:span 2"><label class="fl">Task / Note <span class="req">*</span></label><textarea id="td-text" placeholder="Describe the task or note..." rows="3"></textarea></div>
+        <div class="fg"><label class="fl">Type</label>
+          <select id="td-type">
+            <option value="todo">✅ To-Do</option>
+            <option value="vendor">📞 Vendor Follow-Up</option>
+            <option value="mom">📋 MOM Note</option>
+            <option value="shortage">⚠️ Shortage Alert</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Priority</label>
+          <select id="td-pri">
+            <option value="urgent">🔴 Urgent</option>
+            <option value="normal" selected>🟡 Normal</option>
+            <option value="info">🔵 Info</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Due Date (optional)</label><input type="date" id="td-due"></div>
+        <div class="fg"><label class="fl">Article (optional)</label><select id="td-art"><option value="">None</option></select></div>
+        <div class="fg" style="grid-column:span 2"><label class="fl">Detail / Notes</label><textarea id="td-detail" placeholder="Additional details..." rows="2"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-add-todo')">Cancel</button><button class="btn btn-primary" onclick="addTodo()">Add Task</button></div>
+  </div>
+</div>
+
+<!-- Close Month -->
+<div class="overlay hide" id="m-close-month">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head"><span>📦</span><span class="modal-title">Close Month & Archive</span><button class="btn btn-ghost btn-xs ml-auto" onclick="closeModal('m-close-month')">✕</button></div>
+    <div class="modal-body">
+      <div class="info-warn">⚠️ This creates an archive snapshot. Current data remains active — archiving does NOT delete data.</div>
+      <div class="fg mt12">
+        <label class="fl">Month to Archive</label>
+        <select id="arc-month-sel" style="width:100%">
+          <option value="0">Jan 2026</option><option value="1">Feb 2026</option>
+          <option value="2">Mar 2026</option><option value="3">Apr 2026</option>
+          <option value="4">May 2026</option><option value="5" selected>Jun 2026</option>
+          <option value="6">Jul 2026</option><option value="7">Aug 2026</option>
+          <option value="8">Sep 2026</option><option value="9">Oct 2026</option>
+          <option value="10">Nov 2026</option><option value="11">Dec 2026</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-close-month')">Cancel</button><button class="btn btn-gold" onclick="archiveMonth()">📦 Archive Month</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+// DATA STORE
+// ═══════════════════════════════════════════════════
+var MONTHS_LABELS = ['Jan 2026','Feb 2026','Mar 2026','Apr 2026','May 2026','Jun 2026','Jul 2026','Aug 2026','Sep 2026','Oct 2026','Nov 2026','Dec 2026'];
+var RM_OPTIONS = ['Available','Short','Critical','On Order','Awaiting GRN'];
+
+var activeMonthIdx = 5; // Jun 2026
+
+// MASTER — source of truth for article info
+var masterData = [
+  {code:'ART-1042', desc:'Premium Cotton Fabric 44 inch', supplier:'Vikram Tex', price:485, lt:21, moq:500, cat:'Fabric'},
+  {code:'ART-2031', desc:'Pearl Buttons 24 Ligne', supplier:'Anand Weaves', price:12, lt:14, moq:10000, cat:'Trims'},
+  {code:'ART-0987', desc:'YKK Metal Zipper 22cm', supplier:'Sharma Fab', price:28, lt:28, moq:5000, cat:'Zipper'},
+  {code:'ART-3301', desc:'Polyester Lining 44 inch', supplier:'Vikram Tex', price:125, lt:18, moq:1000, cat:'Fabric'},
+  {code:'ART-4422', desc:'Waistband Elastic 38mm', supplier:'Ravi Exports', price:18, lt:10, moq:3000, cat:'Trims'},
+];
+
+// ARTICLES — monthly data per article
+// months[i] = {open, arrPlan, salePlan, grnQty} for month index i
+var articles = [
+  {code:'ART-1042', months: [
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:2400,arrPlan:3000,salePlan:2900,grnQty:2800},
+    {open:2500,arrPlan:2800,salePlan:2600,grnQty:0},
+    {open:0,arrPlan:2500,salePlan:2400,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0}
+  ]},
+  {code:'ART-2031', months: [
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:45000,arrPlan:60000,salePlan:58000,grnQty:55000},
+    {open:47000,arrPlan:55000,salePlan:54000,grnQty:0},
+    {open:0,arrPlan:50000,salePlan:50000,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0}
+  ]},
+  {code:'ART-0987', months: [
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:8500,arrPlan:15000,salePlan:14000,grnQty:12000},
+    {open:9500,arrPlan:14000,salePlan:13000,grnQty:0},
+    {open:0,arrPlan:12000,salePlan:11000,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0}
+  ]},
+  {code:'ART-3301', months: [
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:12000,arrPlan:8000,salePlan:7800,grnQty:7500},
+    {open:12200,arrPlan:7500,salePlan:7200,grnQty:0},
+    {open:0,arrPlan:7000,salePlan:6800,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0}
+  ]},
+  {code:'ART-4422', months: [
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:4200,arrPlan:12000,salePlan:11500,grnQty:10000},
+    {open:4700,arrPlan:11000,salePlan:11000,grnQty:0},
+    {open:0,arrPlan:10000,salePlan:10000,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0},
+    {open:0,arrPlan:0,salePlan:0,grnQty:0},{open:0,arrPlan:0,salePlan:0,grnQty:0}
+  ]},
+];
+
+// SHIPMENTS
+var shipments = [
+  {id:1, artCode:'ART-1042', invoiceNo:'INV-1042-001', qty:600, dispatchDate:'2026-06-02', eta:'2026-06-06', lr:'LR001234', transporter:'DTDC', status:'In Transit', grnQty:0, grnDate:'', monthIdx:5},
+  {id:2, artCode:'ART-1042', invoiceNo:'INV-1042-002', qty:600, dispatchDate:'2026-06-08', eta:'2026-06-12', lr:'LR002345', transporter:'DTDC', status:'Received at DC', grnQty:0, grnDate:'', monthIdx:5},
+  {id:3, artCode:'ART-2031', invoiceNo:'INV-2031-001', qty:10000, dispatchDate:'2026-06-01', eta:'2026-06-05', lr:'MH04AB1234', transporter:'Mahindra Logistics', status:'In Transit', grnQty:0, grnDate:'', monthIdx:5},
+  {id:4, artCode:'ART-0987', invoiceNo:'INV-0987-001', qty:3000, dispatchDate:'2026-06-03', eta:'2026-06-07', lr:'DL01XY9990', transporter:'VRL Logistics', status:'Received at Nearest Warehouse', grnQty:0, grnDate:'', monthIdx:5},
+  {id:5, artCode:'ART-4422', invoiceNo:'INV-4422-001', qty:2500, dispatchDate:'2026-06-01', eta:'2026-06-06', lr:'TN09AB2211', transporter:'Gati Kwe', status:'GRN Done', grnQty:2450, grnDate:'2026-06-07', monthIdx:5},
+  {id:6, artCode:'ART-3301', invoiceNo:'INV-3301-001', qty:1500, dispatchDate:'2026-06-04', eta:'2026-06-08', lr:'GJ05TZ3344', transporter:'Blue Dart', status:'Received at DC', grnQty:0, grnDate:'', monthIdx:5},
+];
+
+// REMARKS
+var remarks = {};
+
+// TODO
+var todos = [
+  {id:1, text:'Follow up Vikram Tex — ART-1042 ETD confirm', type:'vendor', pri:'urgent', done:false, created:'2026-06-01', due:'2026-06-05', artCode:'ART-1042', detail:'Supplier confirmed ETD 5th but not dispatched. Call dispatch team Suresh.', showDetail:false},
+  {id:2, text:'Update July arrival plan with buyer requirements', type:'todo', pri:'normal', done:false, created:'2026-06-01', due:'', artCode:'', detail:'', showDetail:false},
+  {id:3, text:'MOM: Review Ravi Exports performance — elastic delay', type:'mom', pri:'info', done:true, created:'2026-05-28', due:'', artCode:'ART-4422', detail:'Discussed in meeting. New delivery schedule agreed for Jul.', showDetail:false},
+];
+
+// ARCHIVE
+var archiveSnaps = [];
+
+var hlActive = null;
+var showDoneTodos = false;
+var shipIdCounter = 100;
+var masterEditCode = null;
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+var pageMap = {
+  dashboard:'pg-dashboard', tracker:'pg-tracker', transit:'pg-transit',
+  grn:'pg-grn', 'grn-done':'pg-grn-done', 'data-update':'pg-data-update',
+  master:'pg-master', remark:'pg-remark', todo:'pg-todo', archive:'pg-archive'
+};
+var pageTitles = {
+  dashboard:['Dashboard','Supply Chain Overview'],
+  tracker:['Parts Tracker','6-month rolling view — Opening, Arr.Plan, Transit, GRN'],
+  transit:['Arrival / Transit','Track shipments and update status'],
+  grn:['GRN Pending','Received at DC — awaiting GRN confirmation'],
+  'grn-done':['GRN Done','Completed receipts for selected month'],
+  'data-update':['Data Update','Upload or manually enter article & plan data'],
+  master:['Master Data','Article codes, suppliers, prices, lead times'],
+  remark:['Remarks & RM Status','Production remarks and RM status per article'],
+  todo:['To-Do / Notes','Sticky notes, vendor follow-ups, MOM notes'],
+  archive:['Archive','Closed months — historical data']
+};
+
+function navTo(id, el) {
+  Object.values(pageMap).forEach(function(p){document.getElementById(p).classList.remove('act');});
+  document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('act');});
+  document.getElementById(pageMap[id]).classList.add('act');
+  if(el) el.classList.add('act');
+  var t = pageTitles[id]||[id,''];
+  document.getElementById('tb-title').textContent = t[0];
+  document.getElementById('tb-sub').textContent = t[1];
+  renderPage(id);
+}
+
+function renderPage(id) {
+  if(id==='dashboard') renderDashboard();
+  else if(id==='tracker') renderTracker();
+  else if(id==='transit') renderTransit();
+  else if(id==='grn') renderGRNPending();
+  else if(id==='grn-done') renderGRNDone();
+  else if(id==='data-update') renderDataUpdate();
+  else if(id==='master') renderMaster();
+  else if(id==='remark') renderRemarks();
+  else if(id==='todo') renderTodo();
+  else if(id==='archive') renderArchive();
+}
+
+function showItab(id, el, tabsId) {
+  var tabs = document.getElementById(tabsId);
+  if(!tabs) return;
+  tabs.querySelectorAll('.itab').forEach(function(t){t.classList.remove('act');});
+  var parent = el.closest('.page') || document.querySelector('.page.act');
+  parent.querySelectorAll('.itab-content').forEach(function(c){c.classList.remove('act');});
+  el.classList.add('act');
+  var target = document.getElementById('itp-'+id);
+  if(target) target.classList.add('act');
+}
+
+function onMonthChange() {
+  activeMonthIdx = parseInt(document.getElementById('active-month-sel').value)||5;
+  var lbl = MONTHS_LABELS[activeMonthIdx];
+  document.getElementById('dash-month-lbl').textContent = lbl;
+  document.getElementById('grn-done-month-lbl').textContent = lbl;
+  renderPage(currentPage());
+}
+
+function currentPage() {
+  var found = 'dashboard';
+  Object.keys(pageMap).forEach(function(k){
+    if(document.getElementById(pageMap[k]).classList.contains('act')) found = k;
+  });
+  return found;
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function n(v){return (v||0).toLocaleString('en-IN');}
+function getMaster(code){return masterData.find(function(m){return m.code===code;})||{};}
+function getArticle(code){return articles.find(function(a){return a.code===code;});}
+function getMonthData(code, mi){var a=getArticle(code);return a?(a.months[mi]||{open:0,arrPlan:0,salePlan:0,grnQty:0}):{open:0,arrPlan:0,salePlan:0,grnQty:0};}
+
+function calcOpening(code, mi) {
+  // If manual opening set, use it; else auto-calc from previous month
+  var a = getArticle(code); if(!a) return 0;
+  var m = a.months[mi];
+  if(mi===0||m.open>0) return m.open||0;
+  var prev = a.months[mi-1];
+  return Math.max(0,(prev.open||0)+(prev.arrPlan||0)-(prev.salePlan||0));
+}
+
+function calcOpenPct(open, plan){return plan>0?Math.min(999,Math.round(open/plan*100)):0;}
+function pctClass(p){return p>=70?'pct-hi':p>=40?'pct-mid':p>=20?'pct-low':'pct-crit';}
+function pctPFClass(p){return p>=70?'pf-teal':p>=40?'pf-gold':'pf-red';}
+
+function getTransitQty(code, mi) {
+  // In Transit + Received at Nearest Warehouse (both count as transit in main tracker)
+  return shipments.filter(function(s){
+    return s.artCode===code && s.monthIdx===mi &&
+      (s.status==='In Transit'||s.status==='Received at Nearest Warehouse');
+  }).reduce(function(sum,s){return sum+s.qty;},0);
+}
+
+function getGRNQty(code, mi) {
+  // Sum of GRN Done actual grnQty + article's stored grnQty
+  var fromShipments = shipments.filter(function(s){
+    return s.artCode===code && s.monthIdx===mi && s.status==='GRN Done';
+  }).reduce(function(sum,s){return sum+(s.grnQty||s.qty);},0);
+  var fromArticle = (getMonthData(code,mi).grnQty)||0;
+  return Math.max(fromShipments, fromArticle);
+}
+
+function statusBadge(s) {
+  if(s==='In Transit') return '<span class="badge b-gold">🚛 In Transit</span>';
+  if(s==='Received at Nearest Warehouse') return '<span class="badge b-navy">🏪 Warehouse</span>';
+  if(s==='Received at DC') return '<span class="badge b-orange">🏭 At DC</span>';
+  if(s==='GRN Done') return '<span class="badge b-green">✅ GRN Done</span>';
+  return '<span class="badge b-gray">'+s+'</span>';
+}
+
+function updateGRNBadge() {
+  var count = shipments.filter(function(s){return s.status==='Received at DC';}).length;
+  document.getElementById('grn-badge').textContent = count;
+  // Show notif bar if any overdue
+  var urgents = [];
+  shipments.filter(function(s){return s.status==='Received at DC';}).forEach(function(s){
+    var m = getMaster(s.artCode);
+    urgents.push(s.artCode+' — '+s.invoiceNo+' GRN pending');
+  });
+  var nb = document.getElementById('notif-bar');
+  var nc = document.getElementById('notif-chips');
+  if(urgents.length>0){
+    nc.innerHTML = urgents.map(function(u){return '<span class="nchip">'+u+'</span>';}).join('');
+    nb.classList.remove('hide');
+  } else {
+    nb.classList.add('hide');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+function renderDashboard() {
+  var mi = activeMonthIdx;
+  var totalArts = articles.length;
+  var totalTransit = 0, totalGRN = 0, lowStockCount = 0, totalArrPlan = 0;
+
+  articles.forEach(function(a){
+    var opening = calcOpening(a.code, mi);
+    var m = a.months[mi];
+    totalArrPlan += (m.arrPlan||0);
+    totalTransit += getTransitQty(a.code, mi);
+    totalGRN += getGRNQty(a.code, mi);
+    var pct = calcOpenPct(opening, m.salePlan||0);
+    if(pct<40) lowStockCount++;
+  });
+
+  document.getElementById('dash-kpis').innerHTML =
+    kpiHTML('Total Articles', totalArts, 'Active in tracker', 'k-navy') +
+    kpiHTML('In Transit', n(totalTransit), 'Units in movement', 'k-gold') +
+    kpiHTML('GRN Done', n(totalGRN), MONTHS_LABELS[mi], 'k-green') +
+    kpiHTML('Low Stock', lowStockCount, 'Articles below 40%', 'k-red') +
+    kpiHTML('Arr. Plan', n(totalArrPlan), MONTHS_LABELS[mi], 'k-teal') +
+    kpiHTML('GRN Pending', shipments.filter(function(s){return s.status==='Received at DC';}).length, 'At DC awaiting GRN', 'k-orange');
+
+  // Stock coverage chart
+  var chartHTML = articles.map(function(a){
+    var m = getMaster(a.code);
+    var opening = calcOpening(a.code, mi);
+    var plan = a.months[mi].salePlan||0;
+    var pct = calcOpenPct(opening, plan);
+    var pfc = pctPFClass(pct);
+    return '<div style="margin-bottom:10px">'+
+      '<div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px">'+
+        '<span class="mono fw7">'+a.code+'</span>'+
+        '<span class="'+pctClass(pct)+'">'+pct+'%</span>'+
+      '</div>'+
+      '<div class="prog"><div class="prog-fill '+pfc+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">Opening: '+n(opening)+' / Plan: '+n(plan)+'</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('dash-stock-chart').innerHTML = chartHTML || '<div style="color:var(--text3);font-size:12px">No data</div>';
+
+  // Transit + GRN summary
+  var trCount = shipments.filter(function(s){return s.monthIdx===mi&&(s.status==='In Transit'||s.status==='Received at Nearest Warehouse');}).length;
+  var dcCount = shipments.filter(function(s){return s.monthIdx===mi&&s.status==='Received at DC';}).length;
+  var grnDoneCount = shipments.filter(function(s){return s.monthIdx===mi&&s.status==='GRN Done';}).length;
+  document.getElementById('dash-transit-sum').innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    statBox('🚛 In Transit', trCount+' shipments', 'var(--gold-lt)','var(--gold)')+
+    statBox('🏭 At DC (GRN Pending)', dcCount+' shipments', 'var(--orange-lt)','var(--orange)')+
+    statBox('✅ GRN Done', grnDoneCount+' shipments', 'var(--green-lt)','var(--green)')+
+    statBox('📦 Total Dispatched', shipments.filter(function(s){return s.monthIdx===mi;}).length+' shipments', '#E8EDF5','var(--navy)')+
+    '</div>';
+
+  // Low stock table
+  var lowRows = '';
+  articles.forEach(function(a){
+    var opening = calcOpening(a.code, mi);
+    var md = a.months[mi];
+    var pct = calcOpenPct(opening, md.salePlan||0);
+    if(pct>=40) return;
+    var m = getMaster(a.code);
+    var tr = getTransitQty(a.code,mi);
+    var gr = getGRNQty(a.code,mi);
+    var status = pct<20?'<span class="badge b-red">CRITICAL</span>':'<span class="badge b-orange">LOW</span>';
+    lowRows += '<tr class="row-low"><td class="mono fw7" style="color:var(--navy)">'+a.code+'</td>'+
+      '<td>'+(m.desc||'')+'</td><td>'+(m.supplier||'')+'</td>'+
+      '<td class="mono">'+n(opening)+'</td>'+
+      '<td><span class="'+pctClass(pct)+'">'+pct+'%</span><div class="prog mt12"><div class="prog-fill '+pctPFClass(pct)+'" style="width:'+Math.min(pct,100)+'%"></div></div></td>'+
+      '<td class="mono">'+n(md.salePlan||0)+'</td>'+
+      '<td class="mono" style="color:var(--gold)">'+n(tr)+'</td>'+
+      '<td class="mono" style="color:var(--green)">'+n(gr)+'</td>'+
+      '<td>'+status+'</td></tr>';
+  });
+  document.getElementById('dash-low-tbody').innerHTML = lowRows||'<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--green);font-size:12px">✅ All articles have adequate stock coverage!</td></tr>';
+  document.getElementById('low-stock-badge').textContent = lowRows ? document.querySelectorAll('#dash-low-tbody tr').length : '0';
+}
+
+function kpiHTML(label,val,sub,cls){
+  return '<div class="kpi '+cls+'"><div class="kpi-label">'+label+'</div><div class="kpi-val">'+val+'</div><div class="kpi-sub">'+sub+'</div></div>';
+}
+function statBox(title, val, bg, col){
+  return '<div style="background:'+bg+';border-radius:var(--r);padding:12px 14px;border:1px solid rgba(0,0,0,.06)">'+
+    '<div style="font-size:10.5px;color:var(--text3);margin-bottom:4px">'+title+'</div>'+
+    '<div style="font-size:18px;font-weight:800;color:'+col+'">'+val+'</div></div>';
+}
+
+// ═══════════════════════════════════════════════════
+// PARTS TRACKER
+// ═══════════════════════════════════════════════════
+var TRACKER_MONTHS = 6; // show 6 months starting from activeMonthIdx
+
+function renderTracker() {
+  var mi = activeMonthIdx;
+  var startMi = mi; var endMi = Math.min(mi+TRACKER_MONTHS-1, 11);
+  var monthRange = [];
+  for(var i=startMi;i<=endMi;i++) monthRange.push(i);
+
+  var q = (document.getElementById('tr-search')||{}).value||'';
+  var supF = (document.getElementById('tr-sup-filter')||{}).value||'';
+  var ql = q.toLowerCase();
+
+  // Build supplier filter options
+  var supSel = document.getElementById('tr-sup-filter');
+  if(supSel){
+    var currentSup = supSel.value;
+    var sups = [];
+    masterData.forEach(function(m){if(sups.indexOf(m.supplier)<0)sups.push(m.supplier);});
+    var opts = '<option value="">All Suppliers</option>'+sups.map(function(s){return '<option value="'+s+'"'+(currentSup===s?' selected':'')+'>'+s+'</option>';}).join('');
+    supSel.innerHTML = opts;
+  }
+
+  // Build header
+  var head = '<tr>';
+  head += '<th rowspan="2" style="min-width:90px">Code</th>';
+  head += '<th rowspan="2" style="min-width:155px">Description</th>';
+  head += '<th rowspan="2" style="min-width:110px">Supplier</th>';
+  head += '<th rowspan="2">Price</th>';
+  monthRange.forEach(function(mIdx,i){
+    head += '<th colspan="6" class="mh'+i+'" style="text-align:center;font-size:9.5px;white-space:nowrap">'+MONTHS_LABELS[mIdx]+(mIdx===mi?' ●':'')+'</th>';
+  });
+  head += '<th rowspan="2">Remark</th>';
+  head += '</tr><tr>';
+  monthRange.forEach(function(){
+    head += '<th style="min-width:70px;font-size:9px">Opening</th>';
+    head += '<th style="min-width:55px;background:#E8EDF5;font-size:9px">Open%</th>';
+    head += '<th style="min-width:70px;font-size:9px">Arr.Plan</th>';
+    head += '<th style="min-width:65px;background:#FFFBF0;font-size:9px">Transit</th>';
+    head += '<th style="min-width:60px;background:#FFFBF0;font-size:9px">GRN</th>';
+    head += '<th style="min-width:65px;font-size:9px">Sale Plan</th>';
+  });
+  head += '</tr>';
+  document.getElementById('tracker-head').innerHTML = head;
+
+  // Filter articles
+  var data = articles.filter(function(a){
+    var m = getMaster(a.code);
+    if(ql && (a.code+' '+(m.desc||'')+' '+(m.supplier||'')).toLowerCase().indexOf(ql)<0) return false;
+    if(supF && (m.supplier||'')!==supF) return false;
+    return true;
+  });
+
+  var rows = '';
+  data.forEach(function(a){
+    var m = getMaster(a.code);
+    var opening0 = calcOpening(a.code, startMi);
+    var pct0 = calcOpenPct(opening0, a.months[startMi].salePlan||0);
+    var rowCls = hlActive==='low'&&pct0<40?'row-low':hlActive==='mid'&&pct0>=40&&pct0<70?'row-gold':hlActive==='good'&&pct0>=70?'row-good':'';
+    rows += '<tr class="'+rowCls+'">';
+    rows += '<td class="mono fw7" style="color:var(--navy)">'+a.code+'</td>';
+    rows += '<td style="font-size:11px">'+(m.desc||'—')+'</td>';
+    rows += '<td><span class="badge b-navy" style="font-size:9.5px">'+(m.supplier||'—')+'</span></td>';
+    rows += '<td class="mono">₹'+n(m.price||0)+'</td>';
+    monthRange.forEach(function(mIdx){
+      var opening = calcOpening(a.code, mIdx);
+      var md = a.months[mIdx];
+      var pct = calcOpenPct(opening, md.salePlan||0);
+      var tr = getTransitQty(a.code, mIdx);
+      var gr = getGRNQty(a.code, mIdx);
+      rows += '<td class="mono">'+n(opening)+'</td>';
+      rows += '<td style="background:rgba(15,32,68,0.025)"><span class="'+pctClass(pct)+'">'+pct+'%</span>'+
+        '<div class="prog" style="margin-top:3px"><div class="prog-fill '+pctPFClass(pct)+'" style="width:'+Math.min(pct,100)+'%"></div></div></td>';
+      rows += '<td class="mono" style="color:var(--navy2)">'+n(md.arrPlan||0)+'</td>';
+      rows += '<td class="mono" style="background:#FFFBF0;color:var(--gold)">'+(tr>0?n(tr):'—')+'</td>';
+      rows += '<td class="mono" style="background:#FFFBF0;color:var(--green)">'+(gr>0?n(gr):'—')+'</td>';
+      rows += '<td class="mono">'+n(md.salePlan||0)+'</td>';
+    });
+    var rem = (remarks[a.code]||{}).remark||'';
+    rows += '<td><input value="'+rem.replace(/"/g,'&quot;')+'" placeholder="Add remark..." style="font-size:10.5px;padding:4px 7px;width:130px;border-radius:5px" onchange="setRemark(\''+a.code+'\',this.value)"></td>';
+    rows += '</tr>';
+  });
+
+  document.getElementById('tracker-body').innerHTML = rows||'<tr><td colspan="50" style="text-align:center;padding:30px;color:var(--text3);font-size:12px">No articles found. Add articles in Master Data or Data Update.</td></tr>';
+  document.getElementById('tr-row-count').textContent = data.length;
+}
+
+function setRemark(code, val) {
+  if(!remarks[code]) remarks[code] = {};
+  remarks[code].remark = val;
+  remarks[code].updated = new Date().toLocaleDateString('en-IN');
+}
+
+function toggleHL(){var b=document.getElementById('hl-bar');b.style.display=b.style.display==='none'?'flex':'none';}
+function hlSet(type,btn){hlActive=hlActive===type?null:type;document.querySelectorAll('[id^="hl-"]').forEach(function(b){b.classList.remove('btn-primary');b.classList.add('btn-ghost');});if(hlActive){btn.classList.remove('btn-ghost');btn.classList.add('btn-primary');}renderTracker();}
+function hlClear(){hlActive=null;document.querySelectorAll('[id^="hl-"]').forEach(function(b){b.classList.remove('btn-primary');b.classList.add('btn-ghost');});renderTracker();}
+
+// ═══════════════════════════════════════════════════
+// TRANSIT
+// ═══════════════════════════════════════════════════
+function renderTransit() {
+  renderTransitAll();
+  renderTransitInTransit();
+  renderTransitDC();
+  renderTransitGRNDone();
+}
+
+function renderTransitAll() {
+  var tbody = document.getElementById('transit-all-body');
+  if(!tbody) return;
+  var sorted = shipments.slice().sort(function(a,b){return a.dispatchDate<b.dispatchDate?1:-1;});
+  tbody.innerHTML = sorted.map(function(s){
+    var m = getMaster(s.artCode);
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+s.artCode+'</td>'+
+      '<td style="font-size:11px">'+(m.desc||'—')+'</td>'+
+      '<td class="mono">'+s.invoiceNo+'</td>'+
+      '<td style="font-size:11px">'+(m.supplier||'—')+'</td>'+
+      '<td class="mono">'+s.dispatchDate+'</td>'+
+      '<td class="mono fw7">'+n(s.qty)+'</td>'+
+      '<td class="mono">'+(s.eta||'—')+'</td>'+
+      '<td class="mono" style="font-size:10.5px">'+(s.lr||'—')+'</td>'+
+      '<td>'+statusBadge(s.status)+'</td>'+
+      '<td class="mono">'+(s.status==='GRN Done'?'<span style="color:var(--green)">'+n(s.grnQty||s.qty)+'</span>':'—')+'</td>'+
+      '<td><select onchange="updateShipStatus('+s.id+',this.value)" style="font-size:10.5px;padding:3px 5px;width:165px">'+
+        statusOptions(s.status)+'</select></td>'+
+      '<td><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="deleteShipment('+s.id+')">✕</button></td>'+
+    '</tr>';
+  }).join('');
+}
+
+function statusOptions(cur){
+  var opts=['In Transit','Received at Nearest Warehouse','Received at DC','GRN Done'];
+  return opts.map(function(o){return '<option value="'+o+'"'+(o===cur?' selected':'')+'>'+o+'</option>';}).join('');
+}
+
+function renderTransitInTransit() {
+  var t = document.getElementById('transit-intransit-body');
+  if(!t) return;
+  var data = shipments.filter(function(s){return s.status==='In Transit'||s.status==='Received at Nearest Warehouse';});
+  t.innerHTML = data.length?data.map(function(s){
+    var m = getMaster(s.artCode);
+    var daysLeft = s.eta?Math.ceil((new Date(s.eta)-new Date())/(1000*86400)):null;
+    var dlCls = daysLeft===null?'':daysLeft<0?'style="color:var(--red);font-weight:700"':daysLeft<=2?'style="color:var(--orange);font-weight:700"':'style="color:var(--teal)"';
+    var dlText = daysLeft===null?'—':daysLeft<0?Math.abs(daysLeft)+'d late':daysLeft+'d left';
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+s.artCode+'</td>'+
+      '<td style="font-size:11px">'+(m.desc||'—')+'</td>'+
+      '<td class="mono">'+s.invoiceNo+'</td>'+
+      '<td style="font-size:11px">'+(m.supplier||'—')+'</td>'+
+      '<td class="mono fw7">'+n(s.qty)+'</td>'+
+      '<td class="mono">'+(s.eta||'—')+'</td>'+
+      '<td '+dlCls+' class="mono">'+dlText+'</td>'+
+      '<td class="mono" style="font-size:10.5px">'+(s.lr||'—')+'</td>'+
+      '<td>'+statusBadge(s.status)+'</td>'+
+      '<td><select onchange="updateShipStatus('+s.id+',this.value)" style="font-size:10.5px;padding:3px 5px">'+statusOptions(s.status)+'</select></td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">No shipments in transit</td></tr>';
+}
+
+function renderTransitDC() {
+  var t = document.getElementById('transit-dc-body');
+  if(!t) return;
+  var data = shipments.filter(function(s){return s.status==='Received at DC'||s.status==='Received at Nearest Warehouse';});
+  t.innerHTML = data.length?data.map(function(s){
+    var m = getMaster(s.artCode);
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+s.artCode+'</td>'+
+      '<td style="font-size:11px">'+(m.desc||'—')+'</td>'+
+      '<td class="mono">'+s.invoiceNo+'</td>'+
+      '<td class="mono fw7">'+n(s.qty)+'</td>'+
+      '<td class="mono">'+(s.dispatchDate||'—')+'</td>'+
+      '<td>'+statusBadge(s.status)+'</td>'+
+      '<td>'+(s.status==='Received at DC'?'<span class="badge b-orange">GRN Pending</span>':'<span class="badge b-navy">In Transit (tracker)</span>')+'</td>'+
+      '<td><button class="btn btn-green btn-xs" onclick="markGRNDone('+s.id+')">✓ Mark GRN Done</button></td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">No items at DC / Warehouse</td></tr>';
+}
+
+function renderTransitGRNDone() {
+  var t = document.getElementById('transit-grndone-body');
+  if(!t) return;
+  var data = shipments.filter(function(s){return s.status==='GRN Done';});
+  t.innerHTML = data.length?data.map(function(s){
+    var m = getMaster(s.artCode);
+    var diff = (s.grnQty||s.qty)-s.qty;
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+s.artCode+'</td>'+
+      '<td style="font-size:11px">'+(m.desc||'—')+'</td>'+
+      '<td class="mono">'+s.invoiceNo+'</td>'+
+      '<td class="mono">'+n(s.qty)+'</td>'+
+      '<td class="mono" style="color:var(--green);font-weight:700">'+n(s.grnQty||s.qty)+'</td>'+
+      '<td class="mono '+(diff<0?'pct-crit':diff>0?'pct-hi':'')+'">'+( diff===0?'—':(diff>0?'+':'')+n(diff))+'</td>'+
+      '<td class="mono">'+(s.grnDate||'—')+'</td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">No GRN done shipments</td></tr>';
+}
+
+function updateShipStatus(id, newStatus) {
+  var s = shipments.find(function(x){return x.id===id;});
+  if(!s) return;
+  var old = s.status;
+  s.status = newStatus;
+  if(newStatus==='GRN Done'&&old!=='GRN Done') {
+    var qty = parseInt(prompt('Enter actual GRN Qty (Order Qty: '+s.qty+'):',s.qty)||s.qty);
+    s.grnQty = isNaN(qty)?s.qty:qty;
+    s.grnDate = new Date().toISOString().split('T')[0];
+  }
+  updateGRNBadge();
+  renderTransit();
+  renderGRNPending();
+  renderTracker();
+}
+
+function markGRNDone(id) {
+  var s = shipments.find(function(x){return x.id===id;});
+  if(!s) return;
+  var qty = parseInt(prompt('Enter actual GRN Qty (Order Qty: '+s.qty+'):',s.qty)||s.qty);
+  s.grnQty = isNaN(qty)?s.qty:qty;
+  s.grnDate = new Date().toISOString().split('T')[0];
+  s.status = 'GRN Done';
+  updateGRNBadge();
+  renderGRNPending();
+  renderTransit();
+  renderTracker();
+}
+
+function deleteShipment(id){
+  if(!confirm('Delete this shipment?')) return;
+  shipments = shipments.filter(function(s){return s.id!==id;});
+  renderTransit(); renderGRNPending(); updateGRNBadge();
+}
+
+function addTransit() {
+  var code = document.getElementById('tr-art').value;
+  var inv = document.getElementById('tr-inv').value.trim();
+  var qty = parseInt(document.getElementById('tr-qty').value)||0;
+  var date = document.getElementById('tr-date').value;
+  if(!code||!inv||!qty||!date){alert('Article, Invoice No., Date and Qty are required.');return;}
+  shipments.push({
+    id:++shipIdCounter, artCode:code, invoiceNo:inv,
+    qty:qty, dispatchDate:date,
+    eta:document.getElementById('tr-eta').value,
+    lr:document.getElementById('tr-lr').value.trim(),
+    transporter:document.getElementById('tr-trans').value.trim(),
+    status:document.getElementById('tr-status').value,
+    grnQty:0, grnDate:'', monthIdx:activeMonthIdx
+  });
+  closeModal('m-add-transit');
+  updateGRNBadge(); renderTransit(); renderTracker();
+  ['tr-art','tr-inv','tr-qty','tr-date','tr-eta','tr-lr','tr-trans'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+}
+
+// ═══════════════════════════════════════════════════
+// GRN PENDING
+// ═══════════════════════════════════════════════════
+function renderGRNPending() {
+  var t = document.getElementById('grn-pending-body');
+  if(!t) return;
+  var data = shipments.filter(function(s){return s.status==='Received at DC';});
+  t.innerHTML = data.length?data.map(function(s){
+    var m = getMaster(s.artCode);
+    var agingDays = Math.floor((new Date()-new Date(s.dispatchDate))/(1000*86400));
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+s.artCode+'</td>'+
+      '<td style="font-size:11px">'+(m.desc||'—')+'</td>'+
+      '<td class="mono">'+s.invoiceNo+'</td>'+
+      '<td style="font-size:11px">'+(m.supplier||'—')+'</td>'+
+      '<td class="mono">'+n(s.qty)+'</td>'+
+      '<td class="mono">'+n(s.qty)+'</td>'+
+      '<td><span class="badge b-orange">At DC</span></td>'+
+      '<td class="mono '+(agingDays>7?'pct-crit':agingDays>4?'pct-low':'')+'">'+agingDays+'d</td>'+
+      '<td><input type="number" id="gmanual-'+s.id+'" value="'+s.qty+'" style="width:80px;font-size:11px;padding:3px 6px"></td>'+
+      '<td><button class="btn btn-green btn-xs" onclick="manualGRNDone('+s.id+')">✓ GRN Done</button></td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--green);font-size:12px">✅ No pending GRN items</td></tr>';
+}
+
+function manualGRNDone(id) {
+  var s = shipments.find(function(x){return x.id===id;});
+  if(!s) return;
+  var inp = document.getElementById('gmanual-'+id);
+  var qty = inp?parseInt(inp.value)||s.qty:s.qty;
+  s.grnQty = qty;
+  s.grnDate = new Date().toISOString().split('T')[0];
+  s.status = 'GRN Done';
+  updateGRNBadge(); renderGRNPending(); renderTransit(); renderTracker();
+}
+
+function autoMatchGRN(input) {
+  var file = input.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var wb = XLSX.read(e.target.result, {type:'binary'});
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var data = XLSX.utils.sheet_to_json(ws);
+    var matched = 0, notMatched = [];
+    data.forEach(function(row){
+      var inv = (row['Invoice No']||row['Invoice No.']||row['invoice no']||'').toString().trim();
+      var grnQty = parseInt(row['GRN Qty']||row['grn qty']||0);
+      var grnDate = row['GRN Date']||row['grn date']||new Date().toISOString().split('T')[0];
+      var s = shipments.find(function(x){return x.invoiceNo===inv&&x.status==='Received at DC';});
+      if(s){
+        s.grnQty = grnQty||s.qty;
+        s.grnDate = grnDate;
+        s.status = 'GRN Done';
+        matched++;
+      } else {
+        notMatched.push(inv);
+      }
+    });
+    alert('✅ Matched & updated: '+matched+' invoices.\n'+(notMatched.length?'Not found: '+notMatched.join(', '):'All matched!'));
+    closeModal('m-grn-upload');
+    updateGRNBadge(); renderGRNPending(); renderTransit(); renderTracker();
+  };
+  reader.readAsBinaryString(file);
+  input.value='';
+}
+
+// ═══════════════════════════════════════════════════
+// GRN DONE
+// ═══════════════════════════════════════════════════
+function renderGRNDone() {
+  var mi = activeMonthIdx;
+  var grnData = shipments.filter(function(s){return s.status==='GRN Done'&&s.monthIdx===mi;});
+  var transitData = shipments.filter(function(s){return (s.status==='In Transit'||s.status==='Received at Nearest Warehouse')&&s.monthIdx===mi;});
+  var totalGRNQty = grnData.reduce(function(s,x){return s+(x.grnQty||x.qty);},0);
+  var totalTransitQty = transitData.reduce(function(s,x){return s+x.qty;},0);
+  document.getElementById('grn-done-kpis').innerHTML =
+    kpiHTML('Total GRN Qty', n(totalGRNQty), MONTHS_LABELS[mi], 'k-green') +
+    kpiHTML('GRN Invoices', grnData.length, 'Completed', 'k-teal') +
+    kpiHTML('Still In Transit', n(totalTransitQty), 'Units', 'k-gold') +
+    kpiHTML('Transit Shipments', transitData.length, 'In movement', 'k-navy');
+  document.getElementById('grn-done-count').textContent = grnData.length+' invoices';
+  var t1 = document.getElementById('grn-done-body');
+  if(t1) t1.innerHTML = grnData.length?grnData.map(function(s){
+    var m = getMaster(s.artCode);
+    var diff = (s.grnQty||s.qty)-s.qty;
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+s.artCode+'</td>'+
+      '<td>'+(m.desc||'—')+'</td><td class="mono">'+s.invoiceNo+'</td>'+
+      '<td>'+(m.supplier||'—')+'</td>'+
+      '<td class="mono">'+n(s.qty)+'</td>'+
+      '<td class="mono fw7" style="color:var(--green)">'+n(s.grnQty||s.qty)+'</td>'+
+      '<td class="mono '+(diff<0?'pct-crit':diff>0?'pct-hi':'')+'">'+( diff===0?'—':(diff>0?'+':'')+n(diff))+'</td>'+
+      '<td class="mono">'+(s.grnDate||'—')+'</td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">No GRN done this month</td></tr>';
+  var t2 = document.getElementById('grn-done-transit-body');
+  if(t2) t2.innerHTML = transitData.length?transitData.map(function(s){
+    var m = getMaster(s.artCode);
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+s.artCode+'</td>'+
+      '<td>'+(m.desc||'—')+'</td><td class="mono">'+s.invoiceNo+'</td>'+
+      '<td class="mono">'+n(s.qty)+'</td>'+
+      '<td>'+statusBadge(s.status)+'</td>'+
+      '<td class="mono">'+(s.eta||'—')+'</td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">Nothing in transit</td></tr>';
+}
+
+// ═══════════════════════════════════════════════════
+// DATA UPDATE
+// ═══════════════════════════════════════════════════
+function renderDataUpdate() {
+  // Article selects
+  ['mu-sup','ap-art','os-art'].forEach(function(id){
+    var sel = document.getElementById(id);
+    if(!sel) return;
+    if(id==='mu-sup'){
+      var sups = [];
+      masterData.forEach(function(m){if(sups.indexOf(m.supplier)<0) sups.push(m.supplier);});
+      sel.innerHTML = '<option value="">-- Select --</option>'+sups.map(function(s){return '<option>'+s+'</option>';}).join('');
+    } else {
+      sel.innerHTML = '<option value="">-- Select Article --</option>'+articles.map(function(a){return '<option value="'+a.code+'">'+a.code+'</option>';}).join('');
+    }
+  });
+  renderDUArticles();
+}
+
+function renderDUArticles() {
+  var t = document.getElementById('du-art-body');
+  if(!t) return;
+  t.innerHTML = articles.map(function(a){
+    var m = getMaster(a.code);
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+a.code+'</td>'+
+      '<td>'+(m.desc||'—')+'</td><td>'+(m.supplier||'—')+'</td>'+
+      '<td class="mono">₹'+n(m.price||0)+'</td>'+
+      '<td class="mono">'+n(a.months[activeMonthIdx].open||0)+'</td>'+
+      '<td class="mono">'+(m.lt||0)+' days</td>'+
+      '<td><button class="btn btn-ghost btn-xs" onclick="editArticleModal(\''+a.code+'\')">✎ Edit</button></td>'+
+      '<td><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="deleteArticle(\''+a.code+'\')">✕</button></td>'+
+    '</tr>';
+  }).join('')||'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3)">No articles. Add one above.</td></tr>';
+}
+
+function saveManualArticle() {
+  var code = document.getElementById('mu-code').value.trim().toUpperCase();
+  var desc = document.getElementById('mu-desc').value.trim();
+  if(!code||!desc){alert('Code and Description required.');return;}
+  var sup = document.getElementById('mu-sup').value;
+  var price = parseFloat(document.getElementById('mu-price').value)||0;
+  var open = parseInt(document.getElementById('mu-open').value)||0;
+  // Add to master if not exists
+  if(!masterData.find(function(m){return m.code===code;})){
+    masterData.push({code:code,desc:desc,supplier:sup,price:price,lt:0,moq:0,cat:''});
+  }
+  // Add article months
+  if(!getArticle(code)){
+    var months = [];
+    for(var i=0;i<12;i++) months.push({open:i===activeMonthIdx?open:0,arrPlan:0,salePlan:0,grnQty:0});
+    articles.push({code:code, months:months});
+  } else {
+    getArticle(code).months[activeMonthIdx].open = open;
+  }
+  renderDUArticles(); populateAllSelects();
+  ['mu-code','mu-desc','mu-price','mu-open'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  alert('Article saved: '+code);
+}
+
+function deleteArticle(code){
+  if(!confirm('Delete article '+code+'?')) return;
+  articles = articles.filter(function(a){return a.code!==code;});
+  masterData = masterData.filter(function(m){return m.code!==code;});
+  renderDUArticles(); populateAllSelects();
+}
+
+function editArticleModal(code) {
+  // Simple inline edit via prompt for now
+  var m = getMaster(code);
+  var newDesc = prompt('Description:', m.desc||'');
+  if(newDesc!==null&&newDesc.trim()) m.desc=newDesc.trim();
+  var newPrice = prompt('Price (₹):', m.price||0);
+  if(newPrice!==null) m.price=parseFloat(newPrice)||0;
+  renderDUArticles();
+}
+
+function saveArrivalPlan() {
+  var code = document.getElementById('ap-art').value;
+  var mi = parseInt(document.getElementById('ap-mon').value);
+  var qty = parseInt(document.getElementById('ap-qty').value)||0;
+  var sale = parseInt(document.getElementById('ap-sale').value)||0;
+  if(!code){alert('Select article.');return;}
+  var a = getArticle(code);
+  if(!a){alert('Article not found.');return;}
+  a.months[mi].arrPlan = qty;
+  if(sale>0) a.months[mi].salePlan = sale;
+  alert('Arrival plan saved for '+code+' — '+MONTHS_LABELS[mi]);
+  renderTracker();
+}
+
+function saveOpeningStock() {
+  var code = document.getElementById('os-art').value;
+  var mi = parseInt(document.getElementById('os-mon').value);
+  var qty = parseInt(document.getElementById('os-qty').value)||0;
+  if(!code){alert('Select article.');return;}
+  var a = getArticle(code);
+  if(!a){alert('Article not found.');return;}
+  a.months[mi].open = qty;
+  alert('Opening stock saved for '+code+' — '+MONTHS_LABELS[mi]);
+  renderTracker();
+}
+
+// Import from Excel
+function importArticlesExcel(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var wb=XLSX.read(e.target.result,{type:'binary'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var data=XLSX.utils.sheet_to_json(ws);
+    var added=0;
+    data.forEach(function(row){
+      var code=(row['Article Code']||row['code']||'').toString().trim().toUpperCase();
+      var desc=(row['Description']||row['description']||'').toString().trim();
+      if(!code) return;
+      var sup=row['Supplier']||row['supplier']||'';
+      var price=parseFloat(row['Price']||row['price']||row['Current Price']||0);
+      var open=parseInt(row['Opening Stock']||row['opening stock']||0);
+      var lt=parseInt(row['Lead Time']||row['lead time']||0);
+      if(!masterData.find(function(m){return m.code===code;}))
+        masterData.push({code:code,desc:desc,supplier:sup,price:price,lt:lt,moq:0,cat:''});
+      else {var m=getMaster(code);m.desc=desc||m.desc;m.supplier=sup||m.supplier;m.price=price||m.price;}
+      if(!getArticle(code)){
+        var months=[];
+        for(var i=0;i<12;i++) months.push({open:i===activeMonthIdx?open:0,arrPlan:0,salePlan:0,grnQty:0});
+        articles.push({code:code,months:months});
+      } else {
+        getArticle(code).months[activeMonthIdx].open=open;
+      }
+      added++;
+    });
+    alert('Imported '+added+' articles.');
+    renderDUArticles(); populateAllSelects(); input.value='';
+  };
+  reader.readAsBinaryString(file);
+}
+
+function importArrivalExcel(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var wb=XLSX.read(e.target.result,{type:'binary'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var data=XLSX.utils.sheet_to_json(ws);
+    var updated=0;
+    data.forEach(function(row){
+      var code=(row['Article Code']||row['code']||'').toString().trim().toUpperCase();
+      var miRaw=row['Month']||row['month']||'';
+      var mi=MONTHS_LABELS.indexOf(miRaw.toString().trim());
+      if(mi<0) mi=activeMonthIdx;
+      var arr=parseInt(row['Arrival Plan Qty']||row['arr plan']||0);
+      var sale=parseInt(row['Sale Plan Qty']||row['sale plan']||0);
+      var a=getArticle(code);
+      if(a){a.months[mi].arrPlan=arr;if(sale>0)a.months[mi].salePlan=sale;updated++;}
+    });
+    alert('Updated arrival plan for '+updated+' records.'); input.value=''; renderTracker();
+  };
+  reader.readAsBinaryString(file);
+}
+
+function importOpeningExcel(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var wb=XLSX.read(e.target.result,{type:'binary'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var data=XLSX.utils.sheet_to_json(ws);
+    var updated=0;
+    data.forEach(function(row){
+      var code=(row['Article Code']||row['code']||'').toString().trim().toUpperCase();
+      var miRaw=row['Month']||row['month']||'';
+      var mi=MONTHS_LABELS.indexOf(miRaw.toString().trim());
+      if(mi<0) mi=activeMonthIdx;
+      var qty=parseInt(row['Opening Stock Qty']||row['opening']||0);
+      var a=getArticle(code);
+      if(a){a.months[mi].open=qty;updated++;}
+    });
+    alert('Updated opening stock for '+updated+' records.'); input.value=''; renderTracker();
+  };
+  reader.readAsBinaryString(file);
+}
+
+function importTrackerExcel(input){importArticlesExcel(input);}
+function importTransitExcel(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var wb=XLSX.read(e.target.result,{type:'binary'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var data=XLSX.utils.sheet_to_json(ws);
+    var added=0;
+    data.forEach(function(row){
+      var code=(row['Article Code']||row['code']||'').toString().trim().toUpperCase();
+      var inv=(row['Invoice No']||row['Invoice No.']||row['invoice']||'').toString().trim();
+      var qty=parseInt(row['Qty']||row['qty']||0);
+      if(!code||!inv||!qty) return;
+      shipments.push({
+        id:++shipIdCounter,artCode:code,invoiceNo:inv,qty:qty,
+        dispatchDate:row['Dispatch Date']||row['date']||'',
+        eta:row['ETA']||row['eta']||'',
+        lr:row['LR No']||row['lr']||'',
+        transporter:row['Transporter']||row['transporter']||'',
+        status:row['Status']||row['status']||'In Transit',
+        grnQty:0,grnDate:'',monthIdx:activeMonthIdx
+      });
+      added++;
+    });
+    alert('Imported '+added+' transit entries.'); input.value='';
+    updateGRNBadge(); renderTransit(); renderTracker();
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ═══════════════════════════════════════════════════
+// MASTER DATA
+// ═══════════════════════════════════════════════════
+function renderMaster() {
+  var q = (document.getElementById('master-search')||{}).value||'';
+  var ql = q.toLowerCase();
+  var t = document.getElementById('master-body');
+  if(!t) return;
+  var data = q ? masterData.filter(function(m){return (m.code+m.desc+m.supplier).toLowerCase().indexOf(ql)>=0;}) : masterData;
+  t.innerHTML = data.length?data.map(function(m){
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+m.code+'</td>'+
+      '<td>'+m.desc+'</td><td>'+m.supplier+'</td>'+
+      '<td class="mono">₹'+n(m.price)+'</td>'+
+      '<td class="mono">'+m.lt+' days</td>'+
+      '<td class="mono">'+n(m.moq||0)+'</td>'+
+      '<td><span class="badge b-gray">'+( m.cat||'—')+'</span></td>'+
+      '<td><button class="btn btn-ghost btn-xs" onclick="editMaster(\''+m.code+'\')">✎ Edit</button></td>'+
+      '<td><button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="deleteMaster(\''+m.code+'\')">✕</button></td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">No master data. Add an entry.</td></tr>';
+}
+
+function saveMaster(){
+  var code=document.getElementById('ms-code').value.trim().toUpperCase();
+  var desc=document.getElementById('ms-desc').value.trim();
+  var sup=document.getElementById('ms-sup').value.trim();
+  if(!code||!desc||!sup){alert('Code, Description and Supplier required.');return;}
+  if(masterEditCode){
+    var m=getMaster(masterEditCode);
+    m.code=code;m.desc=desc;m.supplier=sup;
+    m.price=parseFloat(document.getElementById('ms-price').value)||m.price;
+    m.lt=parseInt(document.getElementById('ms-lt').value)||m.lt;
+    m.moq=parseInt(document.getElementById('ms-moq').value)||m.moq;
+    m.cat=document.getElementById('ms-cat').value.trim()||m.cat;
+    masterEditCode=null;
+    document.getElementById('master-modal-title').textContent='Add Master Entry';
+  } else {
+    masterData.push({code:code,desc:desc,supplier:sup,
+      price:parseFloat(document.getElementById('ms-price').value)||0,
+      lt:parseInt(document.getElementById('ms-lt').value)||0,
+      moq:parseInt(document.getElementById('ms-moq').value)||0,
+      cat:document.getElementById('ms-cat').value.trim()
+    });
+  }
+  renderMaster(); populateAllSelects(); closeModal('m-add-master');
+}
+
+function editMaster(code){
+  var m=getMaster(code);
+  masterEditCode=code;
+  document.getElementById('master-modal-title').textContent='Edit Master — '+code;
+  document.getElementById('ms-code').value=m.code||'';
+  document.getElementById('ms-desc').value=m.desc||'';
+  document.getElementById('ms-sup').value=m.supplier||'';
+  document.getElementById('ms-price').value=m.price||'';
+  document.getElementById('ms-lt').value=m.lt||'';
+  document.getElementById('ms-moq').value=m.moq||'';
+  document.getElementById('ms-cat').value=m.cat||'';
+  openModal('m-add-master');
+}
+
+function deleteMaster(code){
+  if(!confirm('Delete master entry for '+code+'?')) return;
+  masterData=masterData.filter(function(m){return m.code!==code;});
+  articles=articles.filter(function(a){return a.code!==code;});
+  renderMaster(); populateAllSelects();
+}
+
+function exportMasterXL(){
+  var wb=XLSX.utils.book_new();
+  var rows=[['Article Code','Description','Supplier','Unit Price','Lead Time (Days)','MOQ','Category']];
+  masterData.forEach(function(m){rows.push([m.code,m.desc,m.supplier,m.price,m.lt,m.moq,m.cat]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Master Data');
+  XLSX.writeFile(wb,'ProcureTrack_MasterData.xlsx');
+}
+
+// ═══════════════════════════════════════════════════
+// REMARKS
+// ═══════════════════════════════════════════════════
+function renderRemarks() {
+  var t = document.getElementById('remark-body');
+  if(!t) return;
+  t.innerHTML = articles.map(function(a){
+    var m = getMaster(a.code);
+    var r = remarks[a.code]||{rmStatus:'Available',remark:'',updated:''};
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+a.code+'</td>'+
+      '<td style="font-size:11px">'+(m.desc||'—')+'</td>'+
+      '<td style="font-size:11px">'+(m.supplier||'—')+'</td>'+
+      '<td><select id="rm-status-'+a.code+'" style="font-size:11px;padding:3px 6px;width:130px">'+
+        RM_OPTIONS.map(function(o){return '<option value="'+o+'"'+(r.rmStatus===o?' selected':'')+'>'+o+'</option>';}).join('')+
+      '</select></td>'+
+      '<td><input id="rm-remark-'+a.code+'" value="'+(r.remark||'').replace(/"/g,'&quot;')+'" placeholder="Add remark..." style="font-size:11px;padding:4px 8px;width:250px"></td>'+
+      '<td style="font-size:10px;color:var(--text3)">'+(r.updated||'—')+'</td>'+
+      '<td><button class="btn btn-teal btn-xs" onclick="saveRemark(\''+a.code+'\')">Save</button></td>'+
+    '</tr>';
+  }).join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">No articles.</td></tr>';
+}
+
+function saveRemark(code){
+  if(!remarks[code]) remarks[code]={};
+  remarks[code].rmStatus=(document.getElementById('rm-status-'+code)||{}).value||'Available';
+  remarks[code].remark=(document.getElementById('rm-remark-'+code)||{}).value||'';
+  remarks[code].updated=new Date().toLocaleDateString('en-IN');
+  var btn=event.target;btn.textContent='✓ Saved';btn.style.background='var(--green)';
+  setTimeout(function(){btn.textContent='Save';btn.style.background='';},1500);
+}
+
+function exportRemarksXL(){
+  var wb=XLSX.utils.book_new();
+  var rows=[['Article Code','Description','Supplier','RM Status','Remark','Last Updated']];
+  articles.forEach(function(a){
+    var m=getMaster(a.code);var r=remarks[a.code]||{};
+    rows.push([a.code,m.desc||'',m.supplier||'',r.rmStatus||'Available',r.remark||'',r.updated||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Remarks');
+  XLSX.writeFile(wb,'ProcureTrack_Remarks.xlsx');
+}
+
+// ═══════════════════════════════════════════════════
+// TODO
+// ═══════════════════════════════════════════════════
+function renderTodo() {
+  var pending = todos.filter(function(t){return !t.done;});
+  var done = todos.filter(function(t){return t.done;});
+  document.getElementById('pending-count').textContent = pending.length;
+  document.getElementById('done-count').textContent = done.length;
+  document.getElementById('todo-board-pending').innerHTML = pending.length ? pending.map(todoCardHTML).join('') : '<div style="color:var(--text3);font-size:12px;padding:20px">No pending tasks. Great job! 🎉</div>';
+  document.getElementById('todo-board-done').innerHTML = done.map(todoCardHTML).join('');
+  document.getElementById('todo-section-done').style.display = showDoneTodos ? 'block' : 'none';
+}
+
+function todoCardHTML(t) {
+  var priColor = t.pri==='urgent'?'var(--red)':t.pri==='info'?'var(--teal)':'var(--gold)';
+  var typeLabel = {todo:'✅ To-Do',vendor:'📞 Vendor',mom:'📋 MOM',shortage:'⚠️ Shortage'}[t.type]||t.type;
+  var typeBg = {todo:'b-green',vendor:'b-teal',mom:'b-gold',shortage:'b-red'}[t.type]||'b-gray';
+  var dueLabel = '';
+  if(t.due){var d=new Date(t.due);var diff=Math.ceil((d-new Date())/(1000*86400));dueLabel=diff<0?'<span class="badge b-red">Overdue '+Math.abs(diff)+'d</span>':diff<=2?'<span class="badge b-orange">Due in '+diff+'d</span>':'<span class="badge b-teal">Due '+t.due+'</span>';}
+  return '<div class="todo-card pri-'+t.pri+(t.done?' done-card':'')+'">'+
+    '<div style="display:flex;gap:5px;margin-bottom:7px;flex-wrap:wrap">'+
+      '<span class="badge '+typeBg+'">'+typeLabel+'</span>'+
+      (t.artCode?'<span class="badge b-navy" style="font-size:9.5px">'+t.artCode+'</span>':'')+
+      dueLabel+
+    '</div>'+
+    '<div class="todo-text">'+t.text+'</div>'+
+    (t.showDetail&&t.detail?'<div class="todo-detail-box">'+t.detail+'</div>':'')+
+    '<div class="todo-meta">'+
+      '<span>'+t.created+'</span>'+
+    '</div>'+
+    '<div class="todo-actions">'+
+      (t.done?
+        '<button class="todo-btn" onclick="toggleTodoDone('+t.id+')">↩ Reopen</button>':
+        '<button class="todo-btn" onclick="toggleTodoDone('+t.id+')">✓ Done</button>'
+      )+
+      (t.detail?'<button class="todo-btn '+(t.showDetail?'act':'')+'" onclick="toggleTodoDetail('+t.id+')">'+(t.showDetail?'▲ Less':'▼ Detail')+'</button>':'')+
+      '<button class="todo-btn" style="color:var(--red);margin-left:auto" onclick="deleteTodo('+t.id+')">✕</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function quickAddTodo(){
+  var text=document.getElementById('quick-todo').value.trim();
+  var pri=document.getElementById('quick-pri').value;
+  if(!text) return;
+  todos.push({id:Date.now(),text:text,type:'todo',pri:pri,done:false,created:new Date().toLocaleDateString('en-IN'),due:'',artCode:'',detail:'',showDetail:false});
+  document.getElementById('quick-todo').value='';
+  renderTodo();
+}
+
+function addTodo(){
+  var text=document.getElementById('td-text').value.trim();
+  if(!text){alert('Task text required.');return;}
+  todos.push({
+    id:Date.now(),text:text,
+    type:document.getElementById('td-type').value,
+    pri:document.getElementById('td-pri').value,
+    done:false,
+    created:new Date().toLocaleDateString('en-IN'),
+    due:document.getElementById('td-due').value,
+    artCode:document.getElementById('td-art').value,
+    detail:document.getElementById('td-detail').value.trim(),
+    showDetail:false
+  });
+  closeModal('m-add-todo');
+  renderTodo();
+}
+
+function toggleTodoDone(id){
+  var t=todos.find(function(x){return x.id===id;});
+  if(t) t.done=!t.done;
+  renderTodo();
+}
+function toggleTodoDetail(id){
+  var t=todos.find(function(x){return x.id===id;});
+  if(t) t.showDetail=!t.showDetail;
+  renderTodo();
+}
+function deleteTodo(id){
+  if(!confirm('Delete this task?')) return;
+  todos=todos.filter(function(x){return x.id!==id;});
+  renderTodo();
+}
+function toggleDoneNotes(){showDoneTodos=!showDoneTodos;renderTodo();}
+
+// ═══════════════════════════════════════════════════
+// ARCHIVE
+// ═══════════════════════════════════════════════════
+function renderArchive(){
+  var chipsEl=document.getElementById('arc-chips');
+  var emptyEl=document.getElementById('arc-empty');
+  var tbody=document.getElementById('archive-body');
+  if(!chipsEl||!tbody) return;
+  if(!archiveSnaps.length){
+    chipsEl.innerHTML='';
+    emptyEl.style.display='block';
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">No archived data yet.</td></tr>';
+    return;
+  }
+  emptyEl.style.display='none';
+  var months=[...new Set(archiveSnaps.map(function(a){return a.monthLabel;}))];
+  chipsEl.innerHTML=months.map(function(m){
+    return '<span class="arc-month-chip" onclick="filterArchive(\''+m+'\',this)">'+m+'</span>';
+  }).join('')+'<span class="arc-month-chip" onclick="filterArchive(\'\',this)">All</span>';
+  filterArchive('');
+}
+
+function filterArchive(month, btn){
+  if(btn){document.querySelectorAll('.arc-month-chip').forEach(function(c){c.classList.remove('act');});btn.classList.add('act');}
+  var data=month?archiveSnaps.filter(function(a){return a.monthLabel===month;}):archiveSnaps;
+  document.getElementById('archive-body').innerHTML=data.map(function(a){
+    return '<tr>'+
+      '<td class="mono fw7" style="color:var(--navy)">'+a.code+'</td>'+
+      '<td>'+a.desc+'</td><td>'+a.supplier+'</td>'+
+      '<td><span class="badge b-navy">'+a.monthLabel+'</span></td>'+
+      '<td class="mono">'+n(a.open)+'</td><td class="mono">'+n(a.arrPlan)+'</td>'+
+      '<td class="mono">'+n(a.salePlan)+'</td><td class="mono">'+n(a.grnQty)+'</td>'+
+      '<td class="mono">'+n(a.closing)+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function archiveMonth(){
+  var mi=parseInt(document.getElementById('arc-month-sel').value);
+  var lbl=MONTHS_LABELS[mi];
+  articles.forEach(function(a){
+    var m=getMaster(a.code);
+    var opening=calcOpening(a.code,mi);
+    var md=a.months[mi];
+    var closing=Math.max(0,opening+(md.arrPlan||0)-(md.salePlan||0));
+    archiveSnaps.push({
+      code:a.code,desc:m.desc||'',supplier:m.supplier||'',
+      monthLabel:lbl,monthIdx:mi,
+      open:opening,arrPlan:md.arrPlan||0,salePlan:md.salePlan||0,
+      grnQty:getGRNQty(a.code,mi),closing:closing
+    });
+  });
+  alert('Month '+lbl+' archived successfully! '+articles.length+' articles saved.');
+  closeModal('m-close-month');
+  renderArchive();
+}
+
+function exportArchiveXL(){
+  var wb=XLSX.utils.book_new();
+  var rows=[['Code','Description','Supplier','Month','Opening','Arr.Plan','Sale Plan','GRN Qty','Closing']];
+  archiveSnaps.forEach(function(a){rows.push([a.code,a.desc,a.supplier,a.monthLabel,a.open,a.arrPlan,a.salePlan,a.grnQty,a.closing]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Archive');
+  XLSX.writeFile(wb,'ProcureTrack_Archive.xlsx');
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════
+function exportAll(){
+  var wb=XLSX.utils.book_new();
+  // Tracker sheet
+  var tr=[['Code','Description','Supplier','Price','Month','Opening','Open%','Arr.Plan','Transit','GRN','Sale Plan']];
+  articles.forEach(function(a){
+    var m=getMaster(a.code);
+    for(var mi=0;mi<12;mi++){
+      var md=a.months[mi];
+      var opening=calcOpening(a.code,mi);
+      var pct=calcOpenPct(opening,md.salePlan||0);
+      if(opening||md.arrPlan||md.salePlan)
+        tr.push([a.code,m.desc||'',m.supplier||'',m.price||0,MONTHS_LABELS[mi],opening,pct+'%',md.arrPlan||0,getTransitQty(a.code,mi),getGRNQty(a.code,mi),md.salePlan||0]);
+    }
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(tr),'Parts Tracker');
+  // Shipments sheet
+  var sh=[['Article Code','Invoice No','Dispatch Date','Qty','ETA','LR No','Transporter','Status','GRN Qty','GRN Date']];
+  shipments.forEach(function(s){sh.push([s.artCode,s.invoiceNo,s.dispatchDate,s.qty,s.eta,s.lr,s.transporter,s.status,s.grnQty||0,s.grnDate||'']);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sh),'Shipments');
+  XLSX.writeFile(wb,'ProcureTrack_Export.xlsx');
+}
+
+function exportTrackerXL(){exportAll();}
+function exportGRNXL(){
+  var wb=XLSX.utils.book_new();
+  var rows=[['Article Code','Invoice No','Supplier','Order Qty','GRN Qty','Variance','GRN Date']];
+  shipments.filter(function(s){return s.status==='GRN Done';}).forEach(function(s){
+    var m=getMaster(s.artCode);
+    rows.push([s.artCode,s.invoiceNo,m.supplier||'',s.qty,s.grnQty||s.qty,(s.grnQty||s.qty)-s.qty,s.grnDate||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'GRN Done');
+  XLSX.writeFile(wb,'ProcureTrack_GRN_Done.xlsx');
+}
+
+// ═══════════════════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════════════════
+function dlTemplate(type){
+  var wb=XLSX.utils.book_new();
+  var templates={
+    tracker:[['Article Code','Description','Supplier','Current Price','Opening Stock','Lead Time (Days)'],['ART-XXXX','Sample Article','Supplier Name',100,500,21]],
+    articles:[['Article Code','Description','Supplier','Price','Opening Stock','Lead Time'],['ART-XXXX','Article Name','Supplier Name',100,500,21]],
+    arrival:[['Article Code','Month','Arrival Plan Qty','Sale Plan Qty'],['ART-XXXX','Jun 2026',3000,2900]],
+    opening:[['Article Code','Month','Opening Stock Qty'],['ART-XXXX','Jun 2026',2500]],
+    transit:[['Article Code','Invoice No','Dispatch Date','Qty','ETA','LR No','Transporter','Status'],['ART-XXXX','INV-001','2026-06-01',500,'2026-06-05','LR12345','DTDC','In Transit']],
+    grn:[['Invoice No','GRN Qty','GRN Date'],['INV-001',480,'2026-06-07']],
+  };
+  var data=templates[type]||[['No template']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'Template');
+  XLSX.writeFile(wb,'ProcureTrack_'+type+'_Template.xlsx');
+}
+
+// ═══════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.remove('hide');}
+function closeModal(id){document.getElementById(id).classList.add('hide');}
+
+document.querySelectorAll('.overlay').forEach(function(o){
+  o.addEventListener('click',function(e){if(e.target===o)o.classList.add('hide');});
+});
+
+// ═══════════════════════════════════════════════════
+// POPULATE SELECTS
+// ═══════════════════════════════════════════════════
+function populateAllSelects(){
+  var artSelIds=['tr-art','na-sup','ap-art','os-art','td-art'];
+  artSelIds.forEach(function(id){
+    var sel=document.getElementById(id);
+    if(!sel) return;
+    if(id==='na-sup'){
+      var sups=[];masterData.forEach(function(m){if(sups.indexOf(m.supplier)<0)sups.push(m.supplier);});
+      sel.innerHTML='<option value="">-- Select --</option>'+sups.map(function(s){return '<option>'+s+'</option>';}).join('');
+    } else if(id==='td-art'){
+      sel.innerHTML='<option value="">None</option>'+articles.map(function(a){return '<option value="'+a.code+'">'+a.code+'</option>';}).join('');
+    } else {
+      sel.innerHTML='<option value="">-- Select --</option>'+articles.map(function(a){return '<option value="'+a.code+'">'+a.code+'</option>';}).join('');
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('load', function(){
+  document.getElementById('active-month-sel').value = '5';
+  activeMonthIdx = 5;
+  document.getElementById('user-av').textContent = 'RM';
+  document.getElementById('user-name').textContent = 'Ramesh Mishra';
+  document.getElementById('user-role').textContent = 'Buyer';
+  populateAllSelects();
+  updateGRNBadge();
+  renderDashboard();
+});
+</script>
+</body>
+</html>
