@@ -449,6 +449,8 @@ textarea{resize:vertical;min-height:65px;}
     </select>
     <button class="btn btn-ghost btn-sm" onclick="exportAll()">⬇ Export</button>
     <button class="btn btn-primary btn-sm" onclick="openModal('m-add-article')">+ Add Article</button>
+    <span id="save-indicator" style="font-size:10.5px;color:var(--teal,#0D7D6C);font-weight:600;transition:opacity 1.5s;opacity:0;white-space:nowrap;">✓ Saved</span>
+    <button class="btn btn-ghost btn-sm" onclick="clearAllData()" style="color:var(--red,#C0392B);font-size:10px;" title="Clear all data and reset">🗑 Reset</button>
   </div>
 
   <!-- CONTENT -->
@@ -2299,15 +2301,175 @@ function populateAllSelects(){
 // INIT
 // ═══════════════════════════════════════════════════
 window.addEventListener('load', function(){
-  document.getElementById('active-month-sel').value = '5';
-  activeMonthIdx = 5;
+  // Load saved data first — if none, keep defaults
+  var hadSaved = loadData();
+
+  // Sync month selector to loaded value
+  var mSel = document.getElementById('active-month-sel');
+  if (mSel) mSel.value = activeMonthIdx;
+
   document.getElementById('user-av').textContent = 'RM';
   document.getElementById('user-name').textContent = 'Ramesh Mishra';
   document.getElementById('user-role').textContent = 'Buyer';
+
   populateAllSelects();
   updateGRNBadge();
   renderDashboard();
+
+  if (hadSaved) {
+    var el = document.getElementById('save-indicator');
+    if (el) { el.textContent = '✓ Data loaded'; el.style.opacity='1'; setTimeout(function(){ el.style.opacity='0'; }, 3000); }
+  }
 });
+
+// ═══════════════════════════════════════════════════
+// LOCAL STORAGE — AUTO SAVE & LOAD
+// Every data change saves instantly. Data survives
+// browser close, refresh, and GitHub Pages reload.
+// ═══════════════════════════════════════════════════
+
+var LS_KEY = 'procuretrack_v1';
+var _saveTimer = null;
+
+function saveData() {
+  // Debounce: batch rapid changes into one write
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function() {
+    try {
+      var payload = {
+        masterData:    masterData,
+        articles:      articles,
+        shipments:     shipments,
+        remarks:       remarks,
+        todos:         todos,
+        archiveSnaps:  archiveSnaps,
+        shipIdCounter: shipIdCounter,
+        activeMonthIdx: activeMonthIdx,
+        savedAt:       new Date().toISOString()
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(payload));
+      showSaveIndicator();
+    } catch(e) {
+      console.warn('Save failed:', e);
+    }
+  }, 400);
+}
+
+function loadData() {
+  try {
+    var raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    var d = JSON.parse(raw);
+    if (d.masterData    && d.masterData.length)    masterData    = d.masterData;
+    if (d.articles      && d.articles.length)      articles      = d.articles;
+    if (d.shipments     && d.shipments.length)      shipments     = d.shipments;
+    if (d.remarks)                                   remarks       = d.remarks;
+    if (d.todos         && d.todos.length)          todos         = d.todos;
+    if (d.archiveSnaps  && d.archiveSnaps.length)   archiveSnaps  = d.archiveSnaps;
+    if (d.shipIdCounter)                             shipIdCounter = d.shipIdCounter;
+    if (d.activeMonthIdx !== undefined)              activeMonthIdx = d.activeMonthIdx;
+    return true;
+  } catch(e) {
+    console.warn('Load failed:', e);
+    return false;
+  }
+}
+
+function clearAllData() {
+  if (!confirm('⚠️ This will DELETE all your saved data and reset to demo data. Are you sure?')) return;
+  if (!confirm('Last warning — all articles, shipments, GRN, todos will be deleted. Continue?')) return;
+  localStorage.removeItem(LS_KEY);
+  location.reload();
+}
+
+function showSaveIndicator() {
+  var el = document.getElementById('save-indicator');
+  if (!el) return;
+  el.textContent = '✓ Saved';
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(function() { el.style.opacity = '0'; }, 2000);
+}
+
+// ── Hook saveData() into every mutation function ──
+// Wrap the key functions that change data
+
+var _orig_addArticle = addArticle;
+addArticle = function() { _orig_addArticle.apply(this,arguments); saveData(); };
+
+var _orig_deleteArticle = deleteArticle;
+deleteArticle = function(c) { _orig_deleteArticle(c); saveData(); };
+
+var _orig_saveManualArticle = saveManualArticle;
+saveManualArticle = function() { _orig_saveManualArticle(); saveData(); };
+
+var _orig_saveMaster = saveMaster;
+saveMaster = function() { _orig_saveMaster(); saveData(); };
+
+var _orig_deleteMaster = deleteMaster;
+deleteMaster = function(c) { _orig_deleteMaster(c); saveData(); };
+
+var _orig_addTransit = addTransit;
+addTransit = function() { _orig_addTransit(); saveData(); };
+
+var _orig_deleteShipment = deleteShipment;
+deleteShipment = function(id) { _orig_deleteShipment(id); saveData(); };
+
+var _orig_updateShipStatus = updateShipStatus;
+updateShipStatus = function(id, s) { _orig_updateShipStatus(id, s); saveData(); };
+
+var _orig_markGRNDone = markGRNDone;
+markGRNDone = function(id) { _orig_markGRNDone(id); saveData(); };
+
+var _orig_manualGRNDone = manualGRNDone;
+manualGRNDone = function(id) { _orig_manualGRNDone(id); saveData(); };
+
+var _orig_autoMatchGRN = autoMatchGRN;
+autoMatchGRN = function(inp) { _orig_autoMatchGRN(inp); saveData(); };
+
+var _orig_saveArrivalPlan = saveArrivalPlan;
+saveArrivalPlan = function() { _orig_saveArrivalPlan(); saveData(); };
+
+var _orig_saveOpeningStock = saveOpeningStock;
+saveOpeningStock = function() { _orig_saveOpeningStock(); saveData(); };
+
+var _orig_saveRemark = saveRemark;
+saveRemark = function(code) { _orig_saveRemark(code); saveData(); };
+
+var _orig_addTodo = addTodo;
+addTodo = function() { _orig_addTodo(); saveData(); };
+
+var _orig_quickAddTodo = quickAddTodo;
+quickAddTodo = function() { _orig_quickAddTodo(); saveData(); };
+
+var _orig_toggleTodoDone = toggleTodoDone;
+toggleTodoDone = function(id) { _orig_toggleTodoDone(id); saveData(); };
+
+var _orig_deleteTodo = deleteTodo;
+deleteTodo = function(id) { _orig_deleteTodo(id); saveData(); };
+
+var _orig_archiveMonth = archiveMonth;
+archiveMonth = function() { _orig_archiveMonth(); saveData(); };
+
+var _orig_setRemark = setRemark;
+setRemark = function(code, val) { _orig_setRemark(code, val); saveData(); };
+
+var _orig_importArticlesExcel = importArticlesExcel;
+importArticlesExcel = function(inp) { _orig_importArticlesExcel(inp); saveData(); };
+
+var _orig_importArrivalExcel = importArrivalExcel;
+importArrivalExcel = function(inp) { _orig_importArrivalExcel(inp); saveData(); };
+
+var _orig_importOpeningExcel = importOpeningExcel;
+importOpeningExcel = function(inp) { _orig_importOpeningExcel(inp); saveData(); };
+
+var _orig_importTransitExcel = importTransitExcel;
+importTransitExcel = function(inp) { _orig_importTransitExcel(inp); saveData(); };
+
+var _orig_onMonthChange = onMonthChange;
+onMonthChange = function() { _orig_onMonthChange(); saveData(); };
+
+
 </script>
 </body>
 </html>
